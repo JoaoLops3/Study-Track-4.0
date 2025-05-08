@@ -3,6 +3,8 @@ import { FileText, Plus, Pencil, Trash2 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../contexts/AuthContext";
 import { toast } from "react-hot-toast";
+import ReactQuill from "react-quill";
+import "react-quill/dist/quill.snow.css";
 
 interface Page {
   id: string;
@@ -113,6 +115,48 @@ export default function Pages() {
     }
   };
 
+  const customToolbar = (
+    <div id="toolbar">
+      <span className="ql-formats">
+        <button
+          className="ql-header"
+          value="1"
+          title="Título 1 (grande)"
+        ></button>
+        <button
+          className="ql-header"
+          value="2"
+          title="Título 2 (médio)"
+        ></button>
+        <button
+          className="ql-header"
+          value="3"
+          title="Título 3 (pequeno)"
+        ></button>
+      </span>
+      <span className="ql-formats">
+        <button className="ql-bold" title="Negrito"></button>
+        <button className="ql-italic" title="Itálico"></button>
+        <button className="ql-underline" title="Sublinhado"></button>
+      </span>
+      <span className="ql-formats">
+        <button
+          className="ql-list"
+          value="ordered"
+          title="Lista Numerada"
+        ></button>
+        <button
+          className="ql-list"
+          value="bullet"
+          title="Lista com Marcadores"
+        ></button>
+      </span>
+      <span className="ql-formats">
+        <button className="ql-clean" title="Remover Formatação"></button>
+      </span>
+    </div>
+  );
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -152,11 +196,15 @@ export default function Pages() {
                   </div>
                   <div>
                     <h3 className="font-medium">{page.title}</h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                      {typeof page.content === "string"
-                        ? page.content
-                        : JSON.stringify(page.content)}
-                    </p>
+                    <div
+                      className="text-sm text-gray-600 dark:text-gray-400 mt-1"
+                      dangerouslySetInnerHTML={{
+                        __html:
+                          typeof page.content === "string"
+                            ? page.content
+                            : JSON.stringify(page.content),
+                      }}
+                    />
                   </div>
                 </div>
                 <div className="flex gap-2">
@@ -228,337 +276,33 @@ export default function Pages() {
               </div>
 
               <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="block text-sm font-medium">Conteúdo</label>
-                  <div className="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400">
-                    <span>
-                      Dica: Use # para títulos, * para itálico, ** para negrito
-                    </span>
-                  </div>
-                </div>
-
-                <div className="border dark:border-gray-700 rounded-lg overflow-hidden">
-                  {/* Barra de ferramentas */}
-                  <div className="flex flex-wrap items-center gap-2 p-2 bg-gray-50 dark:bg-gray-900/50 border-b dark:border-gray-700">
-                    <div className="flex items-center gap-1 border-r dark:border-gray-700 pr-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const textarea = document.querySelector("textarea");
-                          if (textarea) {
-                            const start = textarea.selectionStart;
-                            const end = textarea.selectionEnd;
-                            const text = textarea.value;
-                            const newText =
-                              text.substring(0, start) +
-                              "TÍTULO PRINCIPAL\n" +
-                              text.substring(start, end) +
-                              "\n" +
-                              text.substring(end);
-                            setFormData({ ...formData, content: newText });
-                          }
-                        }}
-                        className="px-3 py-1.5 bg-white dark:bg-gray-800 border dark:border-gray-700 rounded hover:bg-gray-50 dark:hover:bg-gray-700 text-sm font-medium"
-                      >
-                        Título Principal
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const textarea = document.querySelector("textarea");
-                          if (textarea) {
-                            const start = textarea.selectionStart;
-                            const end = textarea.selectionEnd;
-                            const text = textarea.value;
-                            const newText =
-                              text.substring(0, start) +
-                              "SUBTÍTULO\n" +
-                              text.substring(start, end) +
-                              "\n" +
-                              text.substring(end);
-                            setFormData({ ...formData, content: newText });
-                          }
-                        }}
-                        className="px-3 py-1.5 bg-white dark:bg-gray-800 border dark:border-gray-700 rounded hover:bg-gray-50 dark:hover:bg-gray-700 text-sm font-medium"
-                      >
-                        Subtítulo
-                      </button>
-                    </div>
-
-                    <div className="flex items-center gap-1 border-r dark:border-gray-700 pr-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const textarea = document.querySelector("textarea");
-                          if (textarea) {
-                            const start = textarea.selectionStart;
-                            const end = textarea.selectionEnd;
-                            const text = textarea.value;
-                            const newText =
-                              text.substring(0, start) +
-                              "NEGRITO\n" +
-                              text.substring(start, end) +
-                              "\n" +
-                              text.substring(end);
-                            setFormData({ ...formData, content: newText });
-                          }
-                        }}
-                        className="px-3 py-1.5 bg-white dark:bg-gray-800 border dark:border-gray-700 rounded hover:bg-gray-50 dark:hover:bg-gray-700 text-sm font-bold"
-                      >
-                        Negrito
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const textarea = document.querySelector("textarea");
-                          if (textarea) {
-                            const start = textarea.selectionStart;
-                            const end = textarea.selectionEnd;
-                            const text = textarea.value;
-                            const newText =
-                              text.substring(0, start) +
-                              "ITÁLICO\n" +
-                              text.substring(start, end) +
-                              "\n" +
-                              text.substring(end);
-                            setFormData({ ...formData, content: newText });
-                          }
-                        }}
-                        className="px-3 py-1.5 bg-white dark:bg-gray-800 border dark:border-gray-700 rounded hover:bg-gray-50 dark:hover:bg-gray-700 text-sm italic"
-                      >
-                        Itálico
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const textarea = document.querySelector("textarea");
-                          if (textarea) {
-                            const start = textarea.selectionStart;
-                            const end = textarea.selectionEnd;
-                            const text = textarea.value;
-                            const newText =
-                              text.substring(0, start) +
-                              "SUBLINHADO\n" +
-                              text.substring(start, end) +
-                              "\n" +
-                              text.substring(end);
-                            setFormData({ ...formData, content: newText });
-                          }
-                        }}
-                        className="px-3 py-1.5 bg-white dark:bg-gray-800 border dark:border-gray-700 rounded hover:bg-gray-50 dark:hover:bg-gray-700 text-sm underline"
-                      >
-                        Sublinhado
-                      </button>
-                    </div>
-
-                    <div className="flex items-center gap-1">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const textarea = document.querySelector("textarea");
-                          if (textarea) {
-                            const start = textarea.selectionStart;
-                            const end = textarea.selectionEnd;
-                            const text = textarea.value;
-                            const newText =
-                              text.substring(0, start) +
-                              "• " +
-                              text.substring(start, end) +
-                              "\n" +
-                              text.substring(end);
-                            setFormData({ ...formData, content: newText });
-                          }
-                        }}
-                        className="px-3 py-1.5 bg-white dark:bg-gray-800 border dark:border-gray-700 rounded hover:bg-gray-50 dark:hover:bg-gray-700 text-sm"
-                      >
-                        Lista com Marcadores
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const textarea = document.querySelector("textarea");
-                          if (textarea) {
-                            const start = textarea.selectionStart;
-                            const end = textarea.selectionEnd;
-                            const text = textarea.value;
-                            const newText =
-                              text.substring(0, start) +
-                              "1. " +
-                              text.substring(start, end) +
-                              "\n" +
-                              text.substring(end);
-                            setFormData({ ...formData, content: newText });
-                          }
-                        }}
-                        className="px-3 py-1.5 bg-white dark:bg-gray-800 border dark:border-gray-700 rounded hover:bg-gray-50 dark:hover:bg-gray-700 text-sm"
-                      >
-                        Lista Numerada
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Editor de texto */}
-                  <div className="relative">
-                    <textarea
-                      value={formData.content}
-                      onChange={(e) =>
-                        setFormData({ ...formData, content: e.target.value })
-                      }
-                      className="w-full px-4 py-3 bg-white dark:bg-gray-900 focus:outline-none resize-none"
-                      rows={15}
-                      placeholder="Digite o conteúdo da página..."
-                      required
-                    />
-                  </div>
-                </div>
-
-                {/* Templates */}
-                <div className="mt-6">
-                  <label className="block text-sm font-medium mb-2">
-                    Templates
-                  </label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const template = `TÍTULO PRINCIPAL
-Resumo
-
-SUBTÍTULO
-Conceitos Principais
-• Ponto 1
-• Ponto 2
-• Ponto 3
-
-SUBTÍTULO
-Exemplos
-1. Exemplo 1
-2. Exemplo 2
-
-SUBTÍTULO
-Fórmulas
-NEGRITO
-Fórmula 1: descrição
-NEGRITO
-Fórmula 2: descrição
-
-SUBTÍTULO
-Observações
-ITÁLICO
-Observação importante`;
-                        setFormData({ ...formData, content: template });
-                      }}
-                      className="p-3 text-left border dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors"
-                    >
-                      <h4 className="font-medium mb-1">Resumo Básico</h4>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        Estrutura para resumos simples
-                      </p>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const template = `TÍTULO PRINCIPAL
-Resumo Detalhado
-
-SUBTÍTULO
-Introdução
-ITÁLICO
-Contexto e importância do tema
-
-SUBTÍTULO
-Desenvolvimento
-NEGRITO
-Tópico 1
-• Ponto principal
-• Explicação
-• Exemplo
-
-NEGRITO
-Tópico 2
-• Ponto principal
-• Explicação
-• Exemplo
-
-SUBTÍTULO
-Conclusão
-ITÁLICO
-Principais pontos e conclusões
-
-SUBTÍTULO
-Referências
-1. Referência 1
-2. Referência 2`;
-                        setFormData({ ...formData, content: template });
-                      }}
-                      className="p-3 text-left border dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors"
-                    >
-                      <h4 className="font-medium mb-1">Resumo Detalhado</h4>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        Estrutura para resumos completos
-                      </p>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const template = `TÍTULO PRINCIPAL
-Fichamento
-
-SUBTÍTULO
-Citações Importantes
-ITÁLICO
-"Citação relevante 1"
-ITÁLICO
-Página 123
-
-ITÁLICO
-"Citação relevante 2"
-ITÁLICO
-Página 456
-
-SUBTÍTULO
-Anotações
-• NEGRITO
-Ideia Principal: descrição
-• NEGRITO
-Conceito Chave: explicação
-• NEGRITO
-Dúvida: questionamento
-
-SUBTÍTULO
-Resumo Pessoal
-ITÁLICO
-Minhas conclusões e reflexões`;
-                        setFormData({ ...formData, content: template });
-                      }}
-                      className="p-3 text-left border dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors"
-                    >
-                      <h4 className="font-medium mb-1">Fichamento</h4>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        Estrutura para fichamentos
-                      </p>
-                    </button>
-                  </div>
-                </div>
-
-                <div className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                  <p>Dicas de formatação:</p>
-                  <ul className="list-disc list-inside space-y-1 mt-1">
-                    <li>
-                      Selecione o texto e use os botões acima para formatar
-                    </li>
-                    <li>T1, T2, T3 para diferentes tamanhos de título</li>
-                    <li>B para negrito, I para itálico, U para sublinhado</li>
-                    <li>
-                      Use os botões de lista para criar listas com marcadores ou
-                      numeradas
-                    </li>
-                    <li>
-                      Use o botão de citação para destacar trechos importantes
-                    </li>
-                  </ul>
+                <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">
+                  Conteúdo
+                </label>
+                <div className="mb-4">
+                  {customToolbar}
+                  <ReactQuill
+                    theme="snow"
+                    value={formData.content}
+                    onChange={(value: string) =>
+                      setFormData((prev) => ({ ...prev, content: value }))
+                    }
+                    modules={{
+                      toolbar: {
+                        container: "#toolbar",
+                      },
+                    }}
+                    formats={[
+                      "header",
+                      "bold",
+                      "italic",
+                      "underline",
+                      "list",
+                      "bullet",
+                    ]}
+                    className="bg-white dark:bg-gray-900 rounded-md"
+                    style={{ minHeight: 180 }}
+                  />
                 </div>
               </div>
 
