@@ -1,123 +1,318 @@
-import { useState, useEffect } from 'react';
-import { Timer, X, Play, Pause, SkipForward, Rotate3D as Rotate } from 'lucide-react';
-import { usePomodoro } from '../contexts/PomodoroContext';
+import { useState, useRef, useEffect } from "react";
+import {
+  Timer,
+  X,
+  RotateCcw,
+  Play,
+  Pause,
+  SkipForward,
+  Settings as SettingsIcon,
+} from "lucide-react";
+import { usePomodoro } from "../contexts/PomodoroContext";
+import { useAuth } from "../contexts/AuthContext";
+import { supabase } from "../lib/supabase";
+import { toast } from "react-hot-toast";
+
+const MODES = [
+  { key: "focus", label: "Foco", duration: 25 * 60 },
+  { key: "shortBreak", label: "Pausa Curta", duration: 5 * 60 },
+  { key: "longBreak", label: "Pausa Longa", duration: 15 * 60 },
+];
+
+function formatTime(seconds: number) {
+  const m = Math.floor(seconds / 60)
+    .toString()
+    .padStart(2, "0");
+  const s = (seconds % 60).toString().padStart(2, "0");
+  return `${m}:${s}`;
+}
 
 export default function FloatingPomodoro() {
-  const [isExpanded, setIsExpanded] = useState(false);
-  const { state, startTimer, pauseTimer, resetTimer, skipToNext } = usePomodoro();
-  const [position, setPosition] = useState({ x: 'right-4', y: 'bottom-20' });
+  const { user } = useAuth();
+  const {
+    state,
+    settings,
+    startTimer,
+    pauseTimer,
+    resetTimer,
+    skipToNext,
+    updateSettings,
+    setState,
+  } = usePomodoro();
+  const [isOpen, setIsOpen] = useState(false);
+  const [position, setPosition] = useState({ x: 100, y: 100 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const pomodoroRef = useRef<HTMLDivElement>(null);
+  const [showSettings, setShowSettings] = useState(false);
 
-  // Format seconds to MM:SS
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
+  // Salvar sessão quando completar um foco
+  useEffect(() => {
+    if (state.timeLeft === 0 && state.mode === "focus" && state.isRunning) {
+      saveSession();
+    }
+  }, [state.timeLeft, state.mode, state.isRunning]);
 
-  // Get color based on mode
-  const getModeColor = () => {
-    switch (state.mode) {
-      case 'focus':
-        return 'bg-rose-600 hover:bg-rose-700';
-      case 'shortBreak':
-        return 'bg-emerald-600 hover:bg-emerald-700';
-      case 'longBreak':
-        return 'bg-blue-600 hover:bg-blue-700';
+  const saveSession = async () => {
+    if (!user) return;
+
+    try {
+      const { error } = await supabase.from("pomodoro_sessions").insert({
+        user_id: user.id,
+        mode: state.mode,
+        duration: settings.focusDuration,
+        completed: true,
+      });
+
+      if (error) {
+        console.error("Erro ao salvar sessão:", error);
+        toast.error("Erro ao salvar sessão do Pomodoro");
+        return;
+      }
+
+      toast.success("Sessão do Pomodoro salva com sucesso!");
+    } catch (error) {
+      console.error("Erro ao salvar sessão:", error);
+      toast.error("Erro ao salvar sessão do Pomodoro");
     }
   };
 
-  // Get mode label
-  const getModeLabel = () => {
-    switch (state.mode) {
-      case 'focus':
-        return 'Focus';
-      case 'shortBreak':
-        return 'Short Break';
-      case 'longBreak':
-        return 'Long Break';
+  // Drag logic
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (pomodoroRef.current) {
+      const rect = pomodoroRef.current.getBoundingClientRect();
+      setDragOffset({
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top,
+      });
+      setIsDragging(true);
     }
   };
+
+  const handleMouseMove = (e: MouseEvent) => {
+    if (isDragging && pomodoroRef.current) {
+      const x = e.clientX - dragOffset.x;
+      const y = e.clientY - dragOffset.y;
+      setPosition({ x, y });
+    }
+  };
+
+  const handleMouseUp = () => setIsDragging(false);
+
+  useEffect(() => {
+    if (isDragging) {
+      window.addEventListener("mousemove", handleMouseMove);
+      window.addEventListener("mouseup", handleMouseUp);
+    }
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [isDragging]);
+
+  if (!isOpen) {
+    return (
+      <button
+        onClick={() => setIsOpen(true)}
+        className="fixed bottom-20 right-4 p-3 bg-pink-600 hover:bg-pink-700 text-white rounded-full shadow-lg transition-colors z-50"
+        aria-label="Expandir Pomodoro"
+      >
+        <Timer className="w-6 h-6" />
+        <span className="sr-only">Pomodoro</span>
+      </button>
+    );
+  }
 
   return (
-    <div className={`fixed ${position.y} ${position.x} z-50`}>
-      {isExpanded ? (
-        <div className="flex flex-col bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 w-64 transition-all duration-200">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <Timer size={18} />
-              <h3 className="font-medium">Pomodoro Timer</h3>
+    <div
+      ref={pomodoroRef}
+      className="fixed bg-gray-900 dark:bg-gray-900 rounded-2xl shadow-2xl p-6 w-96 z-50 text-white"
+      style={{
+        left: `${position.x}px`,
+        top: `${position.y}px`,
+        cursor: isDragging ? "grabbing" : "grab",
+      }}
+    >
+      {/* Header */}
+      <div
+        className="flex items-center justify-between mb-2 cursor-grab"
+        onMouseDown={handleMouseDown}
+      >
+        <h2 className="text-2xl font-bold">Pomodoro Timer</h2>
+        <button
+          onClick={() => setIsOpen(false)}
+          className="text-gray-400 hover:text-gray-200"
+        >
+          <X className="w-6 h-6" />
+        </button>
+      </div>
+      <p className="text-gray-400 mb-4 text-center text-sm">
+        Mantenha o foco e seja produtivo com sessões cronometradas
+      </p>
+
+      {/* Mode Tabs */}
+      <div className="flex mb-6 rounded-xl overflow-hidden bg-gray-800">
+        {MODES.map((m) => (
+          <button
+            key={m.key}
+            onClick={() => {
+              setState((prev) => ({
+                ...prev,
+                mode: m.key as "focus" | "shortBreak" | "longBreak",
+                timeLeft:
+                  m.key === "focus"
+                    ? settings.focusDuration
+                    : m.key === "shortBreak"
+                    ? settings.shortBreakDuration
+                    : settings.longBreakDuration,
+                isRunning: false,
+              }));
+            }}
+            className={`flex-1 py-2 text-base font-medium transition-colors
+              ${
+                state.mode === m.key
+                  ? "bg-gray-700 text-white"
+                  : "text-gray-400 hover:bg-gray-700"
+              }`}
+          >
+            {m.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Timer */}
+      <div className="flex flex-col items-center bg-gray-800 rounded-2xl py-8 mb-4">
+        <span className="text-5xl font-extrabold tracking-widest">
+          {formatTime(state.timeLeft)}
+        </span>
+        <span className="text-gray-400 mt-2">
+          Rodada {state.rounds + 1}/{settings.rounds}
+        </span>
+      </div>
+
+      {/* Controls */}
+      <div className="flex justify-center gap-6 mb-6">
+        <button
+          onClick={resetTimer}
+          className="w-12 h-12 flex items-center justify-center rounded-full bg-gray-700 hover:bg-gray-600 text-gray-300 text-xl"
+          aria-label="Reset"
+        >
+          <RotateCcw className="w-6 h-6" />
+        </button>
+        {state.isRunning ? (
+          <button
+            onClick={pauseTimer}
+            className="w-16 h-16 flex items-center justify-center rounded-full bg-indigo-600 hover:bg-indigo-700 text-white text-2xl shadow-lg"
+            aria-label="Pause"
+          >
+            <Pause className="w-8 h-8" />
+          </button>
+        ) : (
+          <button
+            onClick={startTimer}
+            className="w-16 h-16 flex items-center justify-center rounded-full bg-indigo-600 hover:bg-indigo-700 text-white text-2xl shadow-lg"
+            aria-label="Start"
+          >
+            <Play className="w-8 h-8" />
+          </button>
+        )}
+        <button
+          onClick={skipToNext}
+          className="w-12 h-12 flex items-center justify-center rounded-full bg-gray-700 hover:bg-gray-600 text-gray-300 text-xl"
+          aria-label="Skip"
+        >
+          <SkipForward className="w-6 h-6" />
+        </button>
+      </div>
+
+      {/* Settings button */}
+      <button
+        onClick={() => setShowSettings(!showSettings)}
+        className="flex items-center justify-center w-full py-3 px-4 bg-gray-800 rounded-lg hover:bg-gray-700 transition-colors"
+      >
+        <SettingsIcon size={16} className="mr-2" />
+        <span>Configurações do Timer</span>
+      </button>
+
+      {/* Settings panel */}
+      {showSettings && (
+        <div className="mt-6 bg-gray-800 rounded-lg shadow-lg p-6">
+          <h3 className="text-lg font-medium mb-4">Configurações do Timer</h3>
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">
+                Duração do Foco (minutos)
+              </label>
+              <input
+                type="number"
+                min="1"
+                max="60"
+                value={settings.focusDuration / 60}
+                onChange={(e) =>
+                  updateSettings({
+                    focusDuration: parseInt(e.target.value) * 60,
+                  })
+                }
+                className="w-full px-3 py-2 border dark:border-gray-700 rounded-md bg-gray-900"
+              />
             </div>
-            <button 
-              onClick={() => setIsExpanded(false)}
-              className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-            >
-              <X size={18} />
-            </button>
-          </div>
-          
-          {/* Timer display */}
-          <div className={`text-center py-6 px-4 rounded-lg mb-4 ${
-            state.mode === 'focus' 
-              ? 'bg-rose-100 dark:bg-rose-900/30 text-rose-800 dark:text-rose-200' 
-              : state.mode === 'shortBreak'
-                ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-200'
-                : 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200'
-          }`}>
-            <div className="text-3xl font-bold">
-              {formatTime(state.timeLeft)}
+
+            <div>
+              <label className="block text-sm font-medium mb-1">
+                Pausa Curta (minutos)
+              </label>
+              <input
+                type="number"
+                min="1"
+                max="30"
+                value={settings.shortBreakDuration / 60}
+                onChange={(e) =>
+                  updateSettings({
+                    shortBreakDuration: parseInt(e.target.value) * 60,
+                  })
+                }
+                className="w-full px-3 py-2 border dark:border-gray-700 rounded-md bg-gray-900"
+              />
             </div>
-            <div className="text-sm mt-1 opacity-90">
-              {getModeLabel()} • Round {state.rounds + 1}/{state.settings.rounds}
+
+            <div>
+              <label className="block text-sm font-medium mb-1">
+                Pausa Longa (minutos)
+              </label>
+              <input
+                type="number"
+                min="1"
+                max="60"
+                value={settings.longBreakDuration / 60}
+                onChange={(e) =>
+                  updateSettings({
+                    longBreakDuration: parseInt(e.target.value) * 60,
+                  })
+                }
+                className="w-full px-3 py-2 border dark:border-gray-700 rounded-md bg-gray-900"
+              />
             </div>
-          </div>
-          
-          {/* Controls */}
-          <div className="flex justify-center gap-3">
-            {state.isRunning ? (
-              <button
-                onClick={pauseTimer}
-                className="p-2 bg-gray-200 dark:bg-gray-700 rounded-full hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
-                aria-label="Pause"
-              >
-                <Pause size={20} />
-              </button>
-            ) : (
-              <button
-                onClick={startTimer}
-                className="p-2 bg-gray-200 dark:bg-gray-700 rounded-full hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
-                aria-label="Start"
-              >
-                <Play size={20} />
-              </button>
-            )}
-            
-            <button
-              onClick={skipToNext}
-              className="p-2 bg-gray-200 dark:bg-gray-700 rounded-full hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
-              aria-label="Skip to next"
-            >
-              <SkipForward size={20} />
-            </button>
-            
-            <button
-              onClick={resetTimer}
-              className="p-2 bg-gray-200 dark:bg-gray-700 rounded-full hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
-              aria-label="Reset"
-            >
-              <Rotate size={20} />
-            </button>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">
+                Número de Rodadas
+              </label>
+              <input
+                type="number"
+                min="1"
+                max="10"
+                value={settings.rounds}
+                onChange={(e) =>
+                  updateSettings({
+                    rounds: parseInt(e.target.value),
+                  })
+                }
+                className="w-full px-3 py-2 border dark:border-gray-700 rounded-md bg-gray-900"
+              />
+            </div>
           </div>
         </div>
-      ) : (
-        <button
-          onClick={() => setIsExpanded(true)}
-          className={`p-3 text-white rounded-full shadow-lg ${getModeColor()} transition-colors`}
-          aria-label="Expand Pomodoro timer"
-        >
-          <Timer size={24} />
-          <span className="sr-only">Pomodoro Timer</span>
-        </button>
       )}
     </div>
   );

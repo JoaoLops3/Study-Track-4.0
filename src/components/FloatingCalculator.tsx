@@ -1,155 +1,221 @@
-import { useState } from 'react';
-import { Calculator, X } from 'lucide-react';
+import { useState, useRef, useEffect } from "react";
+import { Calculator, X } from "lucide-react";
 
-export default function FloatingCalculator() {
-  const [isExpanded, setIsExpanded] = useState(false);
-  const [display, setDisplay] = useState('0');
-  const [equation, setEquation] = useState('');
-  const [position, setPosition] = useState({ x: 'right-4', y: 'bottom-32' });
+const SCIENTIFIC_BUTTONS = [
+  ["sin", "cos", "tan", "π"],
+  ["ln", "log", "√", "e"],
+  ["(", ")", "^", "%"],
+  ["7", "8", "9", "/"],
+  ["4", "5", "6", "*"],
+  ["1", "2", "3", "-"],
+  ["0", ".", "=", "+"],
+];
 
-  const handleNumberClick = (num: string) => {
-    setDisplay((prev) => {
-      if (prev === '0') return num;
-      if (prev.length > 12) return prev; // Limit input length
-      return prev + num;
-    });
-  };
+const SCIENTIFIC_CONSTS = {
+  π: Math.PI,
+  e: Math.E,
+};
 
-  const handleOperatorClick = (operator: string) => {
-    setEquation(`${display} ${operator}`);
-    setDisplay('0');
-  };
+function evalScientific(expr: string): string {
+  try {
+    let replaced = expr
+      .replace(/π/g, `${Math.PI}`)
+      .replace(/e/g, `${Math.E}`)
+      .replace(/√([\d.]+)/g, (_, n) => `Math.sqrt(${n})`)
+      .replace(/(\d+)\^([\d.]+)/g, (_, a, b) => `Math.pow(${a},${b})`)
+      .replace(/sin\(([^)]+)\)/g, (_, n) => `Math.sin(${n})`)
+      .replace(/cos\(([^)]+)\)/g, (_, n) => `Math.cos(${n})`)
+      .replace(/tan\(([^)]+)\)/g, (_, n) => `Math.tan(${n})`)
+      .replace(/log\(([^)]+)\)/g, (_, n) => `Math.log10(${n})`)
+      .replace(/ln\(([^)]+)\)/g, (_, n) => `Math.log(${n})`)
+      .replace(/%/g, "/100");
+    // eslint-disable-next-line no-eval
+    let result = eval(replaced);
+    if (typeof result === "number" && !isNaN(result) && isFinite(result)) {
+      return result.toString();
+    }
+    return "Error";
+  } catch {
+    return "Error";
+  }
+}
 
-  const handleEquals = () => {
-    try {
-      const result = eval(`${equation.split(' ')[0]} ${equation.split(' ')[1]} ${display}`);
-      setDisplay(Number(result.toFixed(4)).toString());
-      setEquation('');
-    } catch (error) {
-      setDisplay('Error');
-      setTimeout(() => setDisplay('0'), 1000);
+export function FloatingCalculator() {
+  const [isOpen, setIsOpen] = useState(false);
+  const [position, setPosition] = useState({ x: 20, y: 20 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const calculatorRef = useRef<HTMLDivElement>(null);
+  const [display, setDisplay] = useState("0");
+  const [equation, setEquation] = useState("");
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (calculatorRef.current) {
+      const rect = calculatorRef.current.getBoundingClientRect();
+      setDragOffset({
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top,
+      });
+      setIsDragging(true);
     }
   };
 
-  const handleClear = () => {
-    setDisplay('0');
-    setEquation('');
+  const handleMouseMove = (e: MouseEvent) => {
+    if (isDragging && calculatorRef.current) {
+      const x = e.clientX - dragOffset.x;
+      const y = e.clientY - dragOffset.y;
+      setPosition({ x, y });
+    }
   };
 
-  const handleBackspace = () => {
-    setDisplay((prev) => {
-      if (prev.length === 1) return '0';
-      return prev.slice(0, -1);
-    });
+  const handleMouseUp = () => {
+    setIsDragging(false);
   };
+
+  useEffect(() => {
+    if (isDragging) {
+      window.addEventListener("mousemove", handleMouseMove);
+      window.addEventListener("mouseup", handleMouseUp);
+    }
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [isDragging]);
+
+  const handleButton = (btn: string) => {
+    if (btn === "=") {
+      const result = evalScientific(equation + display);
+      setDisplay(result);
+      setEquation("");
+      return;
+    }
+    if (btn === "C") {
+      setDisplay("0");
+      setEquation("");
+      return;
+    }
+    if (["sin", "cos", "tan", "log", "ln", "√"].includes(btn)) {
+      setEquation(equation + btn + "(");
+      setDisplay("");
+      return;
+    }
+    if (btn === "^") {
+      setEquation(equation + display + "^");
+      setDisplay("");
+      return;
+    }
+    if (btn === "%") {
+      setEquation(equation + display + "%");
+      setDisplay("");
+      return;
+    }
+    if (["π", "e"].includes(btn)) {
+      setDisplay((display === "0" ? "" : display) + btn);
+      return;
+    }
+    if (btn === "(") {
+      setEquation(equation + "(");
+      return;
+    }
+    if (btn === ")") {
+      setEquation(equation + display + ")");
+      setDisplay("");
+      return;
+    }
+    if (["+", "-", "*", "/"].includes(btn)) {
+      setEquation(equation + display + btn);
+      setDisplay("");
+      return;
+    }
+    // Números e ponto
+    setDisplay(display === "0" ? btn : display + btn);
+  };
+
+  if (!isOpen) {
+    return (
+      <button
+        onClick={() => setIsOpen(true)}
+        className="fixed bottom-4 right-4 p-3 bg-teal-600 hover:bg-teal-700 text-white rounded-full shadow-lg transition-colors"
+        aria-label="Expand Calculator"
+      >
+        <Calculator className="w-6 h-6" />
+        <span className="sr-only">Calculator</span>
+      </button>
+    );
+  }
 
   return (
-    <div className={`fixed ${position.y} ${position.x} z-50`}>
-      {isExpanded ? (
-        <div className="flex flex-col bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 w-64 transition-all duration-200">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <Calculator size={18} />
-              <h3 className="font-medium">Calculator</h3>
-            </div>
-            <button 
-              onClick={() => setIsExpanded(false)}
-              className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-            >
-              <X size={18} />
-            </button>
-          </div>
-          
-          {/* Display */}
-          <div className="bg-gray-100 dark:bg-gray-700 p-3 rounded-lg mb-3">
-            {equation && (
-              <div className="text-sm text-gray-500 dark:text-gray-400 mb-1 h-5">
-                {equation}
-              </div>
-            )}
-            <div className="text-2xl font-bold text-right truncate">
-              {display}
-            </div>
-          </div>
-          
-          {/* Keypad */}
-          <div className="grid grid-cols-4 gap-2">
-            {/* First row */}
-            <button onClick={handleClear} className="p-3 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-lg hover:bg-red-200 dark:hover:bg-red-800/40">
-              C
-            </button>
-            <button onClick={handleBackspace} className="p-3 bg-gray-200 dark:bg-gray-700 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600">
-              ←
-            </button>
-            <button onClick={() => handleOperatorClick('%')} className="p-3 bg-gray-200 dark:bg-gray-700 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600">
-              %
-            </button>
-            <button onClick={() => handleOperatorClick('/')} className="p-3 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded-lg hover:bg-indigo-200 dark:hover:bg-indigo-800/40">
-              ÷
-            </button>
-            
-            {/* Numbers and operators */}
-            <button onClick={() => handleNumberClick('7')} className="p-3 bg-gray-200 dark:bg-gray-700 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600">
-              7
-            </button>
-            <button onClick={() => handleNumberClick('8')} className="p-3 bg-gray-200 dark:bg-gray-700 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600">
-              8
-            </button>
-            <button onClick={() => handleNumberClick('9')} className="p-3 bg-gray-200 dark:bg-gray-700 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600">
-              9
-            </button>
-            <button onClick={() => handleOperatorClick('*')} className="p-3 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded-lg hover:bg-indigo-200 dark:hover:bg-indigo-800/40">
-              ×
-            </button>
-            
-            <button onClick={() => handleNumberClick('4')} className="p-3 bg-gray-200 dark:bg-gray-700 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600">
-              4
-            </button>
-            <button onClick={() => handleNumberClick('5')} className="p-3 bg-gray-200 dark:bg-gray-700 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600">
-              5
-            </button>
-            <button onClick={() => handleNumberClick('6')} className="p-3 bg-gray-200 dark:bg-gray-700 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600">
-              6
-            </button>
-            <button onClick={() => handleOperatorClick('-')} className="p-3 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded-lg hover:bg-indigo-200 dark:hover:bg-indigo-800/40">
-              -
-            </button>
-            
-            <button onClick={() => handleNumberClick('1')} className="p-3 bg-gray-200 dark:bg-gray-700 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600">
-              1
-            </button>
-            <button onClick={() => handleNumberClick('2')} className="p-3 bg-gray-200 dark:bg-gray-700 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600">
-              2
-            </button>
-            <button onClick={() => handleNumberClick('3')} className="p-3 bg-gray-200 dark:bg-gray-700 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600">
-              3
-            </button>
-            <button onClick={() => handleOperatorClick('+')} className="p-3 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded-lg hover:bg-indigo-200 dark:hover:bg-indigo-800/40">
-              +
-            </button>
-            
-            <button onClick={() => handleNumberClick('0')} className="p-3 bg-gray-200 dark:bg-gray-700 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 col-span-2">
-              0
-            </button>
-            <button onClick={() => handleNumberClick('.')} className="p-3 bg-gray-200 dark:bg-gray-700 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600">
-              .
-            </button>
-            <button onClick={handleEquals} className="p-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
-              =
-            </button>
-          </div>
-        </div>
-      ) : (
+    <div
+      ref={calculatorRef}
+      className="fixed bg-white dark:bg-gray-800 rounded-lg shadow-xl p-4 w-80 z-50"
+      style={{
+        left: `${position.x}px`,
+        top: `${position.y}px`,
+        cursor: isDragging ? "grabbing" : "grab",
+      }}
+    >
+      <div
+        className="flex items-center justify-between mb-4 cursor-grab"
+        onMouseDown={handleMouseDown}
+      >
+        <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-200">
+          Calculadora Científica
+        </h3>
         <button
-          onClick={() => setIsExpanded(true)}
-          className="p-3 bg-teal-600 hover:bg-teal-700 text-white rounded-full shadow-lg transition-colors"
-          aria-label="Expand Calculator"
+          onClick={() => setIsOpen(false)}
+          className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
         >
-          <Calculator size={24} />
-          <span className="sr-only">Calculator</span>
+          <X className="w-5 h-5" />
         </button>
-      )}
+      </div>
+
+      <div className="mb-4">
+        <div className="text-right text-sm text-gray-500 dark:text-gray-400 h-4">
+          {equation}
+        </div>
+        <div className="text-right text-2xl font-semibold text-gray-800 dark:text-gray-100 break-all">
+          {display}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-4 gap-2 mb-2">
+        <button
+          onClick={() => handleButton("C")}
+          className="col-span-4 p-2 rounded-lg bg-red-500 hover:bg-red-600 text-white font-medium transition-colors mb-2"
+        >
+          Limpar
+        </button>
+        {SCIENTIFIC_BUTTONS.flat().map((btn) => (
+          <button
+            key={btn}
+            onClick={() => handleButton(btn)}
+            className={`p-2 rounded-lg text-lg font-medium transition-colors
+              ${
+                btn === "="
+                  ? "bg-teal-600 hover:bg-teal-700 text-white"
+                  : [
+                      "sin",
+                      "cos",
+                      "tan",
+                      "log",
+                      "ln",
+                      "√",
+                      "π",
+                      "e",
+                      "^",
+                      "%",
+                      "(",
+                      ")",
+                    ].includes(btn)
+                  ? "bg-indigo-100 hover:bg-indigo-200 dark:bg-indigo-900/30 dark:hover:bg-indigo-800/40 text-indigo-700 dark:text-indigo-200"
+                  : "bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200"
+              }`}
+          >
+            {btn}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

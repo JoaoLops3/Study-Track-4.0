@@ -1,0 +1,58 @@
+-- Create user_integrations table
+CREATE TABLE IF NOT EXISTS user_integrations (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  provider TEXT NOT NULL,
+  access_token TEXT,
+  refresh_token TEXT,
+  expires_at TIMESTAMP WITH TIME ZONE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(user_id, provider)
+);
+
+-- Create index for faster lookups
+CREATE INDEX IF NOT EXISTS idx_user_integrations_user_id ON user_integrations(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_integrations_provider ON user_integrations(provider);
+
+-- Enable RLS
+ALTER TABLE user_integrations ENABLE ROW LEVEL SECURITY;
+
+-- Create policies
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'user_integrations' AND policyname = 'Users can view their own integrations') THEN
+        CREATE POLICY "Users can view their own integrations"
+            ON user_integrations FOR SELECT
+            USING (auth.uid() = user_id);
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'user_integrations' AND policyname = 'Users can insert their own integrations') THEN
+        CREATE POLICY "Users can insert their own integrations"
+            ON user_integrations FOR INSERT
+            WITH CHECK (auth.uid() = user_id);
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'user_integrations' AND policyname = 'Users can update their own integrations') THEN
+        CREATE POLICY "Users can update their own integrations"
+            ON user_integrations FOR UPDATE
+            USING (auth.uid() = user_id);
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'user_integrations' AND policyname = 'Users can delete their own integrations') THEN
+        CREATE POLICY "Users can delete their own integrations"
+            ON user_integrations FOR DELETE
+            USING (auth.uid() = user_id);
+    END IF;
+END $$;
+
+-- Create trigger for updated_at
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'update_user_integrations_updated_at') THEN
+        CREATE TRIGGER update_user_integrations_updated_at
+            BEFORE UPDATE ON user_integrations
+            FOR EACH ROW
+            EXECUTE FUNCTION update_updated_at_column();
+    END IF;
+END $$; 

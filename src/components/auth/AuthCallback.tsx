@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { supabase } from '../../lib/supabase';
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "../../lib/supabase";
+import { toast } from "react-hot-toast";
 
 export default function AuthCallback() {
   const [error, setError] = useState<string | null>(null);
@@ -10,41 +11,103 @@ export default function AuthCallback() {
     const handleAuthCallback = async () => {
       try {
         // Get code and session from URL
-        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        const hashParams = new URLSearchParams(
+          window.location.hash.substring(1)
+        );
         const queryParams = new URLSearchParams(window.location.search);
 
-        const accessToken = hashParams.get('access_token');
-        const refreshToken = hashParams.get('refresh_token');
-        const errorParam = queryParams.get('error') || hashParams.get('error');
-        const errorDescription = queryParams.get('error_description') || hashParams.get('error_description');
+        const code = queryParams.get("code");
+        const errorParam = queryParams.get("error") || hashParams.get("error");
+        const errorDescription =
+          queryParams.get("error_description") ||
+          hashParams.get("error_description");
 
         if (errorParam) {
-          throw new Error(errorDescription || 'An error occurred during the authentication');
+          throw new Error(
+            errorDescription || "Ocorreu um erro durante a autenticação"
+          );
         }
 
-        // Wait for the auth session to be set
-        if (accessToken && refreshToken) {
-          const { error } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken,
-          });
-
-          if (error) throw error;
+        if (code) {
+          // Exchange code for session
+          const { error: sessionError } =
+            await supabase.auth.exchangeCodeForSession(code);
+          if (sessionError) throw sessionError;
         } else {
-          // If we don't have tokens in the URL, try to exchange code for session
-          const { error } = await supabase.auth.getSession();
-          if (error) throw error;
+          // If no code, try to get existing session
+          const { error: sessionError } = await supabase.auth.getSession();
+          if (sessionError) throw sessionError;
         }
 
-        // Redirect to the dashboard on success
-        navigate('/');
+        // Get the current session
+        const {
+          data: { session },
+          error: sessionError,
+        } = await supabase.auth.getSession();
+        if (sessionError) throw sessionError;
+
+        if (session) {
+          try {
+            // Primeiro, verificar se já existe uma integração
+            const { data: existingIntegration } = await supabase
+              .from("user_integrations")
+              .select("*")
+              .eq("user_id", session.user.id)
+              .eq("provider", "github")
+              .single();
+
+            if (existingIntegration) {
+              // Se existir, atualizar
+              const { error: updateError } = await supabase
+                .from("user_integrations")
+                .update({
+                  access_token: session.provider_token,
+                  refresh_token: session.provider_refresh_token,
+                  expires_at: new Date(Date.now() + 3600 * 1000).toISOString(),
+                  updated_at: new Date().toISOString(),
+                })
+                .eq("user_id", session.user.id)
+                .eq("provider", "github");
+
+              if (updateError) throw updateError;
+            } else {
+              // Se não existir, criar nova
+              const { error: insertError } = await supabase
+                .from("user_integrations")
+                .insert({
+                  user_id: session.user.id,
+                  provider: "github",
+                  access_token: session.provider_token,
+                  refresh_token: session.provider_refresh_token,
+                  expires_at: new Date(Date.now() + 3600 * 1000).toISOString(),
+                });
+
+              if (insertError) throw insertError;
+            }
+
+            toast.success("Conectado com GitHub com sucesso!");
+          } catch (integrationError: any) {
+            console.error(
+              "Error handling GitHub integration:",
+              integrationError
+            );
+            // Não vamos interromper o fluxo por causa desse erro
+            toast.error(
+              "Aviso: Houve um problema ao salvar a integração, mas você ainda está conectado"
+            );
+          }
+        }
+
+        // Redirect to the GitHub page on success
+        navigate("/github");
       } catch (err: any) {
-        console.error('Auth callback error:', err);
-        setError(err.message || 'Authentication failed');
-        
-        // Redirect to login page after 3 seconds on error
+        console.error("Auth callback error:", err);
+        setError(err.message || "Falha na autenticação");
+        toast.error("Erro ao conectar com GitHub");
+
+        // Redirect to GitHub page after 3 seconds on error
         setTimeout(() => {
-          navigate('/login');
+          navigate("/github");
         }, 3000);
       }
     };
@@ -58,13 +121,11 @@ export default function AuthCallback() {
         {error ? (
           <>
             <div className="text-red-600 dark:text-red-400 mb-4 text-xl">
-              Authentication Error
+              Erro de Autenticação
             </div>
-            <p className="text-gray-700 dark:text-gray-300 mb-6">
-              {error}
-            </p>
+            <p className="text-gray-700 dark:text-gray-300 mb-6">{error}</p>
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              Redirecting to login page...
+              Redirecionando para a página do GitHub...
             </p>
           </>
         ) : (
@@ -76,10 +137,10 @@ export default function AuthCallback() {
                 </div>
               </div>
               <h3 className="text-xl font-semibold mb-2">
-                Authentication in progress...
+                Autenticação em andamento...
               </h3>
               <p className="text-gray-600 dark:text-gray-400">
-                Please wait while we sign you in
+                Por favor, aguarde enquanto conectamos sua conta
               </p>
             </div>
           </>

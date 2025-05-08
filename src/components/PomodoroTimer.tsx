@@ -1,215 +1,241 @@
-import { useEffect, useState } from 'react';
-import { Play, Pause, Settings as SettingsIcon, SkipForward, RotateCcw } from 'lucide-react';
-import { usePomodoro } from '../contexts/PomodoroContext';
+import { useEffect } from "react";
+import { usePomodoro } from "../contexts/PomodoroContext";
+import { useAuth } from "../contexts/AuthContext";
+import { supabase } from "../lib/supabase";
+import { toast } from "react-hot-toast";
+import {
+  Play,
+  Pause,
+  RotateCcw,
+  SkipForward,
+  Settings as SettingsIcon,
+} from "lucide-react";
+
+const MODES = [
+  { key: "focus", label: "Foco", duration: 25 * 60 },
+  { key: "shortBreak", label: "Pausa Curta", duration: 5 * 60 },
+  { key: "longBreak", label: "Pausa Longa", duration: 15 * 60 },
+];
+
+function formatTime(seconds: number) {
+  const m = Math.floor(seconds / 60)
+    .toString()
+    .padStart(2, "0");
+  const s = (seconds % 60).toString().padStart(2, "0");
+  return `${m}:${s}`;
+}
 
 export default function PomodoroTimer() {
-  const { state, settings, startTimer, pauseTimer, resetTimer, skipToNext, updateSettings } = usePomodoro();
-  const [showSettings, setShowSettings] = useState(false);
-  const [tempSettings, setTempSettings] = useState({
-    focusDuration: settings.focusDuration / 60,
-    shortBreakDuration: settings.shortBreakDuration / 60,
-    longBreakDuration: settings.longBreakDuration / 60,
-    rounds: settings.rounds
-  });
-  
-  // Format seconds to MM:SS
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
-  
-  // Update document title with timer
+  const { user } = useAuth();
+  const {
+    state,
+    settings,
+    startTimer,
+    pauseTimer,
+    resetTimer,
+    skipToNext,
+    updateSettings,
+    setState,
+  } = usePomodoro();
+
+  // Salvar sessão quando completar um foco
   useEffect(() => {
-    document.title = `${formatTime(state.timeLeft)} - ${state.mode} - Study Track`;
-    
-    return () => {
-      document.title = 'Study Track 3.0';
-    };
-  }, [state.timeLeft, state.mode]);
-  
-  // Save settings changes
-  const saveSettings = () => {
-    updateSettings({
-      focusDuration: tempSettings.focusDuration * 60,
-      shortBreakDuration: tempSettings.shortBreakDuration * 60,
-      longBreakDuration: tempSettings.longBreakDuration * 60,
-      rounds: tempSettings.rounds
-    });
-    setShowSettings(false);
+    if (state.timeLeft === 0 && state.mode === "focus" && state.isRunning) {
+      saveSession();
+    }
+  }, [state.timeLeft, state.mode, state.isRunning]);
+
+  const saveSession = async () => {
+    if (!user) return;
+
+    try {
+      const { error } = await supabase.from("pomodoro_sessions").insert({
+        user_id: user.id,
+        mode: state.mode,
+        duration: settings.focusDuration,
+        completed: true,
+      });
+
+      if (error) {
+        console.error("Erro ao salvar sessão:", error);
+        toast.error("Erro ao salvar sessão do Pomodoro");
+        return;
+      }
+
+      toast.success("Sessão do Pomodoro salva com sucesso!");
+    } catch (error) {
+      console.error("Erro ao salvar sessão:", error);
+      toast.error("Erro ao salvar sessão do Pomodoro");
+    }
   };
-  
+
+  // Atualizar título da página
+  useEffect(() => {
+    const modeLabel = MODES.find((m) => m.key === state.mode)?.label || "";
+    document.title = `${formatTime(
+      state.timeLeft
+    )} - ${modeLabel} | Study Track`;
+  }, [state.timeLeft, state.mode]);
+
   return (
-    <div className="max-w-md mx-auto">
-      {/* Mode selector */}
-      <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-lg mb-6">
-        <button
-          className={`flex-1 py-2 rounded-md text-center transition-colors ${
-            state.mode === 'focus'
-              ? 'bg-white dark:bg-gray-700 shadow-sm font-medium'
-              : 'text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
-          }`}
-          onClick={() => {
-            if (state.mode !== 'focus') {
-              resetTimer();
-            }
-          }}
-        >
-          Focus
-        </button>
-        <button
-          className={`flex-1 py-2 rounded-md text-center transition-colors ${
-            state.mode === 'shortBreak'
-              ? 'bg-white dark:bg-gray-700 shadow-sm font-medium'
-              : 'text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
-          }`}
-          onClick={() => {
-            if (state.mode !== 'shortBreak') {
-              pauseTimer();
-              updateSettings({});
-              setState({ ...state, mode: 'shortBreak', timeLeft: settings.shortBreakDuration });
-            }
-          }}
-        >
-          Short Break
-        </button>
-        <button
-          className={`flex-1 py-2 rounded-md text-center transition-colors ${
-            state.mode === 'longBreak'
-              ? 'bg-white dark:bg-gray-700 shadow-sm font-medium'
-              : 'text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
-          }`}
-          onClick={() => {
-            if (state.mode !== 'longBreak') {
-              pauseTimer();
-              updateSettings({});
-              setState({ ...state, mode: 'longBreak', timeLeft: settings.longBreakDuration });
-            }
-          }}
-        >
-          Long Break
-        </button>
-      </div>
-      
-      {/* Timer display */}
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-8 mb-6 text-center">
-        <div className="mb-8">
-          <h2 className="text-6xl font-bold mb-2 tracking-tight">
-            {formatTime(state.timeLeft)}
-          </h2>
-          <p className="text-gray-600 dark:text-gray-400">
-            Round {state.rounds + 1}/{settings.rounds}
-          </p>
+    <div className="max-w-2xl mx-auto p-6">
+      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl p-8">
+        {/* Mode Tabs */}
+        <div className="flex mb-8 rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800">
+          {MODES.map((m) => (
+            <button
+              key={m.key}
+              onClick={() => {
+                setState((prev) => ({
+                  ...prev,
+                  mode: m.key as "focus" | "shortBreak" | "longBreak",
+                  timeLeft:
+                    m.key === "focus"
+                      ? settings.focusDuration
+                      : m.key === "shortBreak"
+                      ? settings.shortBreakDuration
+                      : settings.longBreakDuration,
+                  isRunning: false,
+                }));
+              }}
+              className={`flex-1 py-3 text-base font-medium transition-colors
+                ${
+                  state.mode === m.key
+                    ? "bg-indigo-600 text-white"
+                    : "text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
+                }`}
+            >
+              {m.label}
+            </button>
+          ))}
         </div>
-        
+
+        {/* Timer */}
+        <div className="flex flex-col items-center bg-gray-100 dark:bg-gray-800 rounded-2xl py-12 mb-8">
+          <span className="text-7xl font-extrabold tracking-widest text-gray-900 dark:text-white">
+            {formatTime(state.timeLeft)}
+          </span>
+          <span className="text-gray-500 dark:text-gray-400 mt-4">
+            Rodada {state.rounds + 1}/{settings.rounds}
+          </span>
+        </div>
+
         {/* Controls */}
-        <div className="flex items-center justify-center space-x-4">
+        <div className="flex justify-center gap-8 mb-8">
           <button
             onClick={resetTimer}
-            className="p-3 rounded-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-            aria-label="Reset timer"
+            className="w-14 h-14 flex items-center justify-center rounded-full bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 text-xl"
+            aria-label="Reset"
           >
-            <RotateCcw size={20} />
+            <RotateCcw className="w-7 h-7" />
           </button>
-          
-          <button
-            onClick={state.isRunning ? pauseTimer : startTimer}
-            className="p-6 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white transition-colors"
-            aria-label={state.isRunning ? "Pause timer" : "Start timer"}
-          >
-            {state.isRunning ? <Pause size={32} /> : <Play size={32} />}
-          </button>
-          
+          {state.isRunning ? (
+            <button
+              onClick={pauseTimer}
+              className="w-20 h-20 flex items-center justify-center rounded-full bg-indigo-600 hover:bg-indigo-700 text-white text-3xl shadow-lg"
+              aria-label="Pause"
+            >
+              <Pause className="w-10 h-10" />
+            </button>
+          ) : (
+            <button
+              onClick={startTimer}
+              className="w-20 h-20 flex items-center justify-center rounded-full bg-indigo-600 hover:bg-indigo-700 text-white text-3xl shadow-lg"
+              aria-label="Start"
+            >
+              <Play className="w-10 h-10" />
+            </button>
+          )}
           <button
             onClick={skipToNext}
-            className="p-3 rounded-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-            aria-label="Skip to next"
+            className="w-14 h-14 flex items-center justify-center rounded-full bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 text-xl"
+            aria-label="Skip"
           >
-            <SkipForward size={20} />
+            <SkipForward className="w-7 h-7" />
           </button>
         </div>
-      </div>
-      
-      {/* Settings button */}
-      <button
-        onClick={() => setShowSettings(!showSettings)}
-        className="flex items-center justify-center w-full py-3 px-4 bg-gray-100 dark:bg-gray-800 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-      >
-        <SettingsIcon size={16} className="mr-2" />
-        <span>Timer Settings</span>
-      </button>
-      
-      {/* Settings panel */}
-      {showSettings && (
-        <div className="mt-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
-          <h3 className="text-lg font-medium mb-4">Timer Settings</h3>
-          
-          <div className="space-y-4">
+
+        {/* Settings */}
+        <div className="bg-gray-100 dark:bg-gray-800 rounded-xl p-6">
+          <h3 className="text-lg font-medium mb-4 text-gray-900 dark:text-white">
+            Configurações do Timer
+          </h3>
+
+          <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-1">Focus Duration (minutes)</label>
+              <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">
+                Duração do Foco (minutos)
+              </label>
               <input
                 type="number"
                 min="1"
                 max="60"
-                value={tempSettings.focusDuration}
-                onChange={(e) => setTempSettings({...tempSettings, focusDuration: parseInt(e.target.value) || 1})}
+                value={settings.focusDuration / 60}
+                onChange={(e) =>
+                  updateSettings({
+                    focusDuration: parseInt(e.target.value) * 60,
+                  })
+                }
                 className="w-full px-3 py-2 border dark:border-gray-700 rounded-md bg-white dark:bg-gray-900"
               />
             </div>
-            
+
             <div>
-              <label className="block text-sm font-medium mb-1">Short Break (minutes)</label>
+              <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">
+                Pausa Curta (minutos)
+              </label>
               <input
                 type="number"
                 min="1"
                 max="30"
-                value={tempSettings.shortBreakDuration}
-                onChange={(e) => setTempSettings({...tempSettings, shortBreakDuration: parseInt(e.target.value) || 1})}
+                value={settings.shortBreakDuration / 60}
+                onChange={(e) =>
+                  updateSettings({
+                    shortBreakDuration: parseInt(e.target.value) * 60,
+                  })
+                }
                 className="w-full px-3 py-2 border dark:border-gray-700 rounded-md bg-white dark:bg-gray-900"
               />
             </div>
-            
+
             <div>
-              <label className="block text-sm font-medium mb-1">Long Break (minutes)</label>
+              <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">
+                Pausa Longa (minutos)
+              </label>
               <input
                 type="number"
                 min="1"
                 max="60"
-                value={tempSettings.longBreakDuration}
-                onChange={(e) => setTempSettings({...tempSettings, longBreakDuration: parseInt(e.target.value) || 1})}
+                value={settings.longBreakDuration / 60}
+                onChange={(e) =>
+                  updateSettings({
+                    longBreakDuration: parseInt(e.target.value) * 60,
+                  })
+                }
                 className="w-full px-3 py-2 border dark:border-gray-700 rounded-md bg-white dark:bg-gray-900"
               />
             </div>
-            
+
             <div>
-              <label className="block text-sm font-medium mb-1">Number of Rounds</label>
+              <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">
+                Número de Rodadas
+              </label>
               <input
                 type="number"
                 min="1"
                 max="10"
-                value={tempSettings.rounds}
-                onChange={(e) => setTempSettings({...tempSettings, rounds: parseInt(e.target.value) || 1})}
+                value={settings.rounds}
+                onChange={(e) =>
+                  updateSettings({
+                    rounds: parseInt(e.target.value),
+                  })
+                }
                 className="w-full px-3 py-2 border dark:border-gray-700 rounded-md bg-white dark:bg-gray-900"
               />
             </div>
           </div>
-          
-          <div className="mt-6 flex space-x-3">
-            <button
-              onClick={() => setShowSettings(false)}
-              className="flex-1 py-2 px-4 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={saveSettings}
-              className="flex-1 py-2 px-4 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
-            >
-              Save
-            </button>
-          </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }
