@@ -125,7 +125,7 @@ export default function PomodoroTimer() {
           <button
             onClick={resetTimer}
             className="w-14 h-14 flex items-center justify-center rounded-full bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 text-xl"
-            aria-label="Reset"
+            aria-label="Reiniciar"
           >
             <RotateCcw className="w-7 h-7" />
           </button>
@@ -133,7 +133,7 @@ export default function PomodoroTimer() {
             <button
               onClick={pauseTimer}
               className="w-20 h-20 flex items-center justify-center rounded-full bg-indigo-600 hover:bg-indigo-700 text-white text-3xl shadow-lg"
-              aria-label="Pause"
+              aria-label="Pausar"
             >
               <Pause className="w-10 h-10" />
             </button>
@@ -141,7 +141,7 @@ export default function PomodoroTimer() {
             <button
               onClick={startTimer}
               className="w-20 h-20 flex items-center justify-center rounded-full bg-indigo-600 hover:bg-indigo-700 text-white text-3xl shadow-lg"
-              aria-label="Start"
+              aria-label="Iniciar"
             >
               <Play className="w-10 h-10" />
             </button>
@@ -149,7 +149,7 @@ export default function PomodoroTimer() {
           <button
             onClick={skipToNext}
             className="w-14 h-14 flex items-center justify-center rounded-full bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 text-xl"
-            aria-label="Skip"
+            aria-label="Pular"
           >
             <SkipForward className="w-7 h-7" />
           </button>

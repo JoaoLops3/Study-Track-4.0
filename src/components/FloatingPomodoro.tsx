@@ -138,7 +138,7 @@ export default function FloatingPomodoro() {
         className="flex items-center justify-between mb-2 cursor-grab"
         onMouseDown={handleMouseDown}
       >
-        <h2 className="text-2xl font-bold">Pomodoro Timer</h2>
+        <h2 className="text-2xl font-bold">Pomodoro Flutuante</h2>
         <button
           onClick={() => setIsOpen(false)}
           className="text-gray-400 hover:text-gray-200"
@@ -195,23 +195,23 @@ export default function FloatingPomodoro() {
         <button
           onClick={resetTimer}
           className="w-12 h-12 flex items-center justify-center rounded-full bg-gray-700 hover:bg-gray-600 text-gray-300 text-xl"
-          aria-label="Reset"
+          aria-label="Reiniciar"
         >
           <RotateCcw className="w-6 h-6" />
         </button>
         {state.isRunning ? (
           <button
             onClick={pauseTimer}
-            className="w-16 h-16 flex items-center justify-center rounded-full bg-indigo-600 hover:bg-indigo-700 text-white text-2xl shadow-lg"
-            aria-label="Pause"
+            className="w-16 h-16 flex items-center justify-center rounded-full bg-pink-600 hover:bg-pink-700 text-white text-2xl shadow-lg"
+            aria-label="Pausar"
           >
             <Pause className="w-8 h-8" />
           </button>
         ) : (
           <button
             onClick={startTimer}
-            className="w-16 h-16 flex items-center justify-center rounded-full bg-indigo-600 hover:bg-indigo-700 text-white text-2xl shadow-lg"
-            aria-label="Start"
+            className="w-16 h-16 flex items-center justify-center rounded-full bg-pink-600 hover:bg-pink-700 text-white text-2xl shadow-lg"
+            aria-label="Iniciar"
           >
             <Play className="w-8 h-8" />
           </button>
@@ -219,7 +219,7 @@ export default function FloatingPomodoro() {
         <button
           onClick={skipToNext}
           className="w-12 h-12 flex items-center justify-center rounded-full bg-gray-700 hover:bg-gray-600 text-gray-300 text-xl"
-          aria-label="Skip"
+          aria-label="Pular"
         >
           <SkipForward className="w-6 h-6" />
         </button>
