@@ -2,7 +2,7 @@
 DO $$ 
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'team_role') THEN
-        CREATE TYPE public.team_role AS ENUM ('owner', 'admin', 'member');
+CREATE TYPE public.team_role AS ENUM ('owner', 'admin', 'member');
     END IF;
 END $$;
 
@@ -10,7 +10,7 @@ END $$;
 DO $$ 
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'invite_status') THEN
-        CREATE TYPE public.invite_status AS ENUM ('pending', 'accepted', 'rejected');
+CREATE TYPE public.invite_status AS ENUM ('pending', 'accepted', 'rejected');
     END IF;
 END $$;
 
@@ -70,24 +70,24 @@ $$ language 'plpgsql';
 DO $$ 
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'update_teams_updated_at') THEN
-        CREATE TRIGGER update_teams_updated_at
-            BEFORE UPDATE ON public.teams
-            FOR EACH ROW
-            EXECUTE FUNCTION public.update_team_updated_at();
+CREATE TRIGGER update_teams_updated_at
+    BEFORE UPDATE ON public.teams
+    FOR EACH ROW
+    EXECUTE FUNCTION public.update_team_updated_at();
     END IF;
 
     IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'update_team_members_updated_at') THEN
-        CREATE TRIGGER update_team_members_updated_at
-            BEFORE UPDATE ON public.team_members
-            FOR EACH ROW
-            EXECUTE FUNCTION public.update_team_updated_at();
+CREATE TRIGGER update_team_members_updated_at
+    BEFORE UPDATE ON public.team_members
+    FOR EACH ROW
+    EXECUTE FUNCTION public.update_team_updated_at();
     END IF;
 
     IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'update_team_invites_updated_at') THEN
-        CREATE TRIGGER update_team_invites_updated_at
-            BEFORE UPDATE ON public.team_invites
-            FOR EACH ROW
-            EXECUTE FUNCTION public.update_team_updated_at();
+CREATE TRIGGER update_team_invites_updated_at
+    BEFORE UPDATE ON public.team_invites
+    FOR EACH ROW
+    EXECUTE FUNCTION public.update_team_updated_at();
     END IF;
 END $$;
 
@@ -100,45 +100,45 @@ ALTER TABLE public.team_invites ENABLE ROW LEVEL SECURITY;
 DO $$ 
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'teams' AND policyname = 'teams_select_policy') THEN
-        CREATE POLICY "teams_select_policy"
-            ON public.teams
-            FOR SELECT
-            USING (
-                auth.uid() = owner_id OR
-                EXISTS (
-                    SELECT 1 FROM public.team_members
-                    WHERE team_id = teams.id AND user_id = auth.uid()
-                )
-            );
+CREATE POLICY "teams_select_policy"
+    ON public.teams
+    FOR SELECT
+    USING (
+        auth.uid() = owner_id OR
+        EXISTS (
+            SELECT 1 FROM public.team_members
+            WHERE team_id = teams.id AND user_id = auth.uid()
+        )
+    );
     END IF;
 
     IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'teams' AND policyname = 'teams_insert_policy') THEN
-        CREATE POLICY "teams_insert_policy"
-            ON public.teams
-            FOR INSERT
-            WITH CHECK (auth.uid() = owner_id);
+CREATE POLICY "teams_insert_policy"
+    ON public.teams
+    FOR INSERT
+    WITH CHECK (auth.uid() = owner_id);
     END IF;
 
     IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'teams' AND policyname = 'teams_update_policy') THEN
-        CREATE POLICY "teams_update_policy"
-            ON public.teams
-            FOR UPDATE
-            USING (
-                auth.uid() = owner_id OR
-                EXISTS (
-                    SELECT 1 FROM public.team_members
-                    WHERE team_id = teams.id 
-                    AND user_id = auth.uid()
-                    AND role IN ('owner', 'admin')
-                )
-            );
+CREATE POLICY "teams_update_policy"
+    ON public.teams
+    FOR UPDATE
+    USING (
+        auth.uid() = owner_id OR
+        EXISTS (
+            SELECT 1 FROM public.team_members
+            WHERE team_id = teams.id 
+            AND user_id = auth.uid()
+            AND role IN ('owner', 'admin')
+        )
+    );
     END IF;
 
     IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'teams' AND policyname = 'teams_delete_policy') THEN
-        CREATE POLICY "teams_delete_policy"
-            ON public.teams
-            FOR DELETE
-            USING (auth.uid() = owner_id);
+CREATE POLICY "teams_delete_policy"
+    ON public.teams
+    FOR DELETE
+    USING (auth.uid() = owner_id);
     END IF;
 END $$;
 
@@ -146,74 +146,74 @@ END $$;
 DO $$ 
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'team_members' AND policyname = 'team_members_select_policy') THEN
-        CREATE POLICY "team_members_select_policy"
-            ON public.team_members
-            FOR SELECT
-            USING (
-                EXISTS (
-                    SELECT 1 FROM public.teams
-                    WHERE id = team_members.team_id
-                    AND (owner_id = auth.uid() OR EXISTS (
-                        SELECT 1 FROM public.team_members
-                        WHERE team_id = team_members.team_id
-                        AND user_id = auth.uid()
-                    ))
-                )
-            );
+CREATE POLICY "team_members_select_policy"
+    ON public.team_members
+    FOR SELECT
+    USING (
+        EXISTS (
+            SELECT 1 FROM public.teams
+            WHERE id = team_members.team_id
+            AND (owner_id = auth.uid() OR EXISTS (
+                SELECT 1 FROM public.team_members
+                WHERE team_id = team_members.team_id
+                AND user_id = auth.uid()
+            ))
+        )
+    );
     END IF;
 
     IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'team_members' AND policyname = 'team_members_insert_policy') THEN
-        CREATE POLICY "team_members_insert_policy"
-            ON public.team_members
-            FOR INSERT
-            WITH CHECK (
-                EXISTS (
-                    SELECT 1 FROM public.teams
-                    WHERE id = team_members.team_id
-                    AND (owner_id = auth.uid() OR EXISTS (
-                        SELECT 1 FROM public.team_members
-                        WHERE team_id = team_members.team_id
-                        AND user_id = auth.uid()
-                        AND role IN ('owner', 'admin')
-                    ))
-                )
-            );
+CREATE POLICY "team_members_insert_policy"
+    ON public.team_members
+    FOR INSERT
+    WITH CHECK (
+        EXISTS (
+            SELECT 1 FROM public.teams
+            WHERE id = team_members.team_id
+            AND (owner_id = auth.uid() OR EXISTS (
+                SELECT 1 FROM public.team_members
+                WHERE team_id = team_members.team_id
+                AND user_id = auth.uid()
+                AND role IN ('owner', 'admin')
+            ))
+        )
+    );
     END IF;
 
     IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'team_members' AND policyname = 'team_members_update_policy') THEN
-        CREATE POLICY "team_members_update_policy"
-            ON public.team_members
-            FOR UPDATE
-            USING (
-                EXISTS (
-                    SELECT 1 FROM public.teams
-                    WHERE id = team_members.team_id
-                    AND (owner_id = auth.uid() OR EXISTS (
-                        SELECT 1 FROM public.team_members
-                        WHERE team_id = team_members.team_id
-                        AND user_id = auth.uid()
-                        AND role IN ('owner', 'admin')
-                    ))
-                )
-            );
+CREATE POLICY "team_members_update_policy"
+    ON public.team_members
+    FOR UPDATE
+    USING (
+        EXISTS (
+            SELECT 1 FROM public.teams
+            WHERE id = team_members.team_id
+            AND (owner_id = auth.uid() OR EXISTS (
+                SELECT 1 FROM public.team_members
+                WHERE team_id = team_members.team_id
+                AND user_id = auth.uid()
+                AND role IN ('owner', 'admin')
+            ))
+        )
+    );
     END IF;
 
     IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'team_members' AND policyname = 'team_members_delete_policy') THEN
-        CREATE POLICY "team_members_delete_policy"
-            ON public.team_members
-            FOR DELETE
-            USING (
-                EXISTS (
-                    SELECT 1 FROM public.teams
-                    WHERE id = team_members.team_id
-                    AND (owner_id = auth.uid() OR EXISTS (
-                        SELECT 1 FROM public.team_members
-                        WHERE team_id = team_members.team_id
-                        AND user_id = auth.uid()
-                        AND role IN ('owner', 'admin')
-                    ))
-                )
-            );
+CREATE POLICY "team_members_delete_policy"
+    ON public.team_members
+    FOR DELETE
+    USING (
+        EXISTS (
+            SELECT 1 FROM public.teams
+            WHERE id = team_members.team_id
+            AND (owner_id = auth.uid() OR EXISTS (
+                SELECT 1 FROM public.team_members
+                WHERE team_id = team_members.team_id
+                AND user_id = auth.uid()
+                AND role IN ('owner', 'admin')
+            ))
+        )
+    );
     END IF;
 END $$;
 
@@ -221,74 +221,74 @@ END $$;
 DO $$ 
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'team_invites' AND policyname = 'team_invites_select_policy') THEN
-        CREATE POLICY "team_invites_select_policy"
-            ON public.team_invites
-            FOR SELECT
-            USING (
-                EXISTS (
-                    SELECT 1 FROM public.teams
-                    WHERE id = team_invites.team_id
-                    AND (owner_id = auth.uid() OR EXISTS (
-                        SELECT 1 FROM public.team_members
-                        WHERE team_id = team_invites.team_id
-                        AND user_id = auth.uid()
-                        AND role IN ('owner', 'admin')
-                    ))
-                )
-            );
+CREATE POLICY "team_invites_select_policy"
+    ON public.team_invites
+    FOR SELECT
+    USING (
+        EXISTS (
+            SELECT 1 FROM public.teams
+            WHERE id = team_invites.team_id
+            AND (owner_id = auth.uid() OR EXISTS (
+                SELECT 1 FROM public.team_members
+                WHERE team_id = team_invites.team_id
+                AND user_id = auth.uid()
+                AND role IN ('owner', 'admin')
+            ))
+        )
+    );
     END IF;
 
     IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'team_invites' AND policyname = 'team_invites_insert_policy') THEN
-        CREATE POLICY "team_invites_insert_policy"
-            ON public.team_invites
-            FOR INSERT
-            WITH CHECK (
-                EXISTS (
-                    SELECT 1 FROM public.teams
-                    WHERE id = team_invites.team_id
-                    AND (owner_id = auth.uid() OR EXISTS (
-                        SELECT 1 FROM public.team_members
-                        WHERE team_id = team_invites.team_id
-                        AND user_id = auth.uid()
-                        AND role IN ('owner', 'admin')
-                    ))
-                )
-            );
+CREATE POLICY "team_invites_insert_policy"
+    ON public.team_invites
+    FOR INSERT
+    WITH CHECK (
+        EXISTS (
+            SELECT 1 FROM public.teams
+            WHERE id = team_invites.team_id
+            AND (owner_id = auth.uid() OR EXISTS (
+                SELECT 1 FROM public.team_members
+                WHERE team_id = team_invites.team_id
+                AND user_id = auth.uid()
+                AND role IN ('owner', 'admin')
+            ))
+        )
+    );
     END IF;
 
     IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'team_invites' AND policyname = 'team_invites_update_policy') THEN
-        CREATE POLICY "team_invites_update_policy"
-            ON public.team_invites
-            FOR UPDATE
-            USING (
-                EXISTS (
-                    SELECT 1 FROM public.teams
-                    WHERE id = team_invites.team_id
-                    AND (owner_id = auth.uid() OR EXISTS (
-                        SELECT 1 FROM public.team_members
-                        WHERE team_id = team_invites.team_id
-                        AND user_id = auth.uid()
-                        AND role IN ('owner', 'admin')
-                    ))
-                )
-            );
+CREATE POLICY "team_invites_update_policy"
+    ON public.team_invites
+    FOR UPDATE
+    USING (
+        EXISTS (
+            SELECT 1 FROM public.teams
+            WHERE id = team_invites.team_id
+            AND (owner_id = auth.uid() OR EXISTS (
+                SELECT 1 FROM public.team_members
+                WHERE team_id = team_invites.team_id
+                AND user_id = auth.uid()
+                AND role IN ('owner', 'admin')
+            ))
+        )
+    );
     END IF;
 
     IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'team_invites' AND policyname = 'team_invites_delete_policy') THEN
-        CREATE POLICY "team_invites_delete_policy"
-            ON public.team_invites
-            FOR DELETE
-            USING (
-                EXISTS (
-                    SELECT 1 FROM public.teams
-                    WHERE id = team_invites.team_id
-                    AND (owner_id = auth.uid() OR EXISTS (
-                        SELECT 1 FROM public.team_members
-                        WHERE team_id = team_invites.team_id
-                        AND user_id = auth.uid()
-                        AND role IN ('owner', 'admin')
-                    ))
-                )
-            );
+CREATE POLICY "team_invites_delete_policy"
+    ON public.team_invites
+    FOR DELETE
+    USING (
+        EXISTS (
+            SELECT 1 FROM public.teams
+            WHERE id = team_invites.team_id
+            AND (owner_id = auth.uid() OR EXISTS (
+                SELECT 1 FROM public.team_members
+                WHERE team_id = team_invites.team_id
+                AND user_id = auth.uid()
+                AND role IN ('owner', 'admin')
+            ))
+        )
+    ); 
     END IF;
 END $$; 

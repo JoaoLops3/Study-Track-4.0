@@ -24,59 +24,59 @@ ALTER TABLE public.cards ENABLE ROW LEVEL SECURITY;
 DO $$ 
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'cards' AND policyname = 'Users can view cards in their boards') THEN
-        CREATE POLICY "Users can view cards in their boards"
-            ON public.cards
-            FOR SELECT
-            USING (
-                EXISTS (
-                    SELECT 1 FROM public.columns
-                    JOIN public.boards ON boards.id = columns.board_id
-                    WHERE columns.id = cards.column_id
-                    AND boards.owner_id = auth.uid()
-                )
-            );
+CREATE POLICY "Users can view cards in their boards"
+  ON public.cards
+  FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.columns
+      JOIN public.boards ON boards.id = columns.board_id
+      WHERE columns.id = cards.column_id
+      AND boards.owner_id = auth.uid()
+    )
+  );
     END IF;
 
     IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'cards' AND policyname = 'Users can insert cards in their boards') THEN
-        CREATE POLICY "Users can insert cards in their boards"
-            ON public.cards
-            FOR INSERT
-            WITH CHECK (
-                EXISTS (
-                    SELECT 1 FROM public.columns
-                    JOIN public.boards ON boards.id = columns.board_id
-                    WHERE columns.id = cards.column_id
-                    AND boards.owner_id = auth.uid()
-                )
-            );
+CREATE POLICY "Users can insert cards in their boards"
+  ON public.cards
+  FOR INSERT
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM public.columns
+      JOIN public.boards ON boards.id = columns.board_id
+      WHERE columns.id = cards.column_id
+      AND boards.owner_id = auth.uid()
+    )
+  );
     END IF;
 
     IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'cards' AND policyname = 'Users can update cards in their boards') THEN
-        CREATE POLICY "Users can update cards in their boards"
-            ON public.cards
-            FOR UPDATE
-            USING (
-                EXISTS (
-                    SELECT 1 FROM public.columns
-                    JOIN public.boards ON boards.id = columns.board_id
-                    WHERE columns.id = cards.column_id
-                    AND boards.owner_id = auth.uid()
-                )
-            );
+CREATE POLICY "Users can update cards in their boards"
+  ON public.cards
+  FOR UPDATE
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.columns
+      JOIN public.boards ON boards.id = columns.board_id
+      WHERE columns.id = cards.column_id
+      AND boards.owner_id = auth.uid()
+    )
+  );
     END IF;
 
     IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'cards' AND policyname = 'Users can delete cards from their boards') THEN
-        CREATE POLICY "Users can delete cards from their boards"
-            ON public.cards
-            FOR DELETE
-            USING (
-                EXISTS (
-                    SELECT 1 FROM public.columns
-                    JOIN public.boards ON boards.id = columns.board_id
-                    WHERE columns.id = cards.column_id
-                    AND boards.owner_id = auth.uid()
-                )
-            );
+CREATE POLICY "Users can delete cards from their boards"
+  ON public.cards
+  FOR DELETE
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.columns
+      JOIN public.boards ON boards.id = columns.board_id
+      WHERE columns.id = cards.column_id
+      AND boards.owner_id = auth.uid()
+    )
+  );
     END IF;
 END $$;
 
@@ -84,9 +84,9 @@ END $$;
 DO $$ 
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'update_cards_updated_at') THEN
-        CREATE TRIGGER update_cards_updated_at
-        BEFORE UPDATE ON public.cards
-        FOR EACH ROW
-        EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_cards_updated_at
+BEFORE UPDATE ON public.cards
+FOR EACH ROW
+EXECUTE FUNCTION update_updated_at_column(); 
     END IF;
 END $$; 

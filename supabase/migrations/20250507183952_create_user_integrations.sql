@@ -22,27 +22,27 @@ ALTER TABLE user_integrations ENABLE ROW LEVEL SECURITY;
 DO $$ 
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'user_integrations' AND policyname = 'Users can view their own integrations') THEN
-        CREATE POLICY "Users can view their own integrations"
-            ON user_integrations FOR SELECT
-            USING (auth.uid() = user_id);
+CREATE POLICY "Users can view their own integrations"
+  ON user_integrations FOR SELECT
+  USING (auth.uid() = user_id);
     END IF;
 
     IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'user_integrations' AND policyname = 'Users can insert their own integrations') THEN
-        CREATE POLICY "Users can insert their own integrations"
-            ON user_integrations FOR INSERT
-            WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can insert their own integrations"
+  ON user_integrations FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
     END IF;
 
     IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'user_integrations' AND policyname = 'Users can update their own integrations') THEN
-        CREATE POLICY "Users can update their own integrations"
-            ON user_integrations FOR UPDATE
-            USING (auth.uid() = user_id);
+CREATE POLICY "Users can update their own integrations"
+  ON user_integrations FOR UPDATE
+  USING (auth.uid() = user_id);
     END IF;
 
     IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'user_integrations' AND policyname = 'Users can delete their own integrations') THEN
-        CREATE POLICY "Users can delete their own integrations"
-            ON user_integrations FOR DELETE
-            USING (auth.uid() = user_id);
+CREATE POLICY "Users can delete their own integrations"
+  ON user_integrations FOR DELETE
+  USING (auth.uid() = user_id);
     END IF;
 END $$;
 
@@ -50,9 +50,9 @@ END $$;
 DO $$ 
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'update_user_integrations_updated_at') THEN
-        CREATE TRIGGER update_user_integrations_updated_at
-            BEFORE UPDATE ON user_integrations
-            FOR EACH ROW
-            EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_user_integrations_updated_at
+    BEFORE UPDATE ON user_integrations
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column(); 
     END IF;
 END $$; 

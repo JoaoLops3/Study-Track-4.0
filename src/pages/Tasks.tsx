@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Plus,
   Filter,
@@ -150,7 +150,10 @@ export default function Tasks() {
     try {
       const { error } = await supabase
         .from("tasks")
-        .update({ completed })
+        .update({
+          completed,
+          updated_at: new Date().toISOString(),
+        })
         .eq("id", taskId);
 
       if (error) throw error;
@@ -189,6 +192,37 @@ export default function Tasks() {
       filterPriority === "all" || task.priority === filterPriority;
     return matchesSearch && matchesCompleted && matchesPriority;
   });
+
+  // Ordenar tarefas por prioridade, data de vencimento e status de conclusão
+  const sortedTasks = useMemo(() => {
+    const priorityOrder = { high: 0, medium: 1, low: 2 };
+
+    return [...filteredTasks].sort((a, b) => {
+      // Primeiro, separar tarefas concluídas e não concluídas
+      if (a.completed !== b.completed) {
+        return a.completed ? 1 : -1;
+      }
+
+      // Depois, ordenar por prioridade
+      const priorityDiff =
+        priorityOrder[a.priority] - priorityOrder[b.priority];
+      if (priorityDiff !== 0) {
+        return priorityDiff;
+      }
+
+      // Se a prioridade for igual, ordenar por data de vencimento
+      if (a.due_date && b.due_date) {
+        return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
+      }
+
+      // Se apenas uma tarefa tiver data, ela vem primeiro
+      if (a.due_date) return -1;
+      if (b.due_date) return 1;
+
+      // Se nenhuma tiver data, manter a ordem original
+      return 0;
+    });
+  }, [filteredTasks]);
 
   const getStatusIcon = (completed: boolean) => {
     return completed ? (
@@ -262,15 +296,17 @@ export default function Tasks() {
       <div className="space-y-4">
         {isLoading ? (
           <div className="text-center py-8">Carregando tarefas...</div>
-        ) : filteredTasks.length === 0 ? (
+        ) : sortedTasks.length === 0 ? (
           <div className="text-center py-8 text-gray-500">
             Nenhuma tarefa encontrada
           </div>
         ) : (
-          filteredTasks.map((task) => (
+          sortedTasks.map((task) => (
             <div
               key={task.id}
-              className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4"
+              className={`bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 ${
+                task.completed ? "opacity-75" : ""
+              }`}
             >
               <div className="flex items-start justify-between">
                 <div className="flex items-start space-x-4">
@@ -283,8 +319,18 @@ export default function Tasks() {
                     {getStatusIcon(task.completed)}
                   </button>
                   <div>
-                    <h3 className="font-medium">{task.title}</h3>
-                    <p className="text-gray-600 dark:text-gray-400 mt-1">
+                    <h3
+                      className={`font-medium ${
+                        task.completed ? "line-through" : ""
+                      }`}
+                    >
+                      {task.title}
+                    </h3>
+                    <p
+                      className={`text-gray-600 dark:text-gray-400 mt-1 ${
+                        task.completed ? "line-through" : ""
+                      }`}
+                    >
                       {task.description}
                     </p>
                     <div className="flex items-center space-x-2 mt-2">
@@ -293,23 +339,48 @@ export default function Tasks() {
                           task.priority
                         )}`}
                       >
-                        {task.priority}
+                        {task.priority === "high"
+                          ? "Alta"
+                          : task.priority === "medium"
+                          ? "Média"
+                          : "Baixa"}
                       </span>
                       {task.due_date && (
-                        <span className="text-sm text-gray-500">
+                        <span
+                          className={`text-sm ${
+                            new Date(task.due_date) < new Date() &&
+                            !task.completed
+                              ? "text-red-500"
+                              : "text-gray-500"
+                          }`}
+                        >
                           Vence em:{" "}
-                          {new Date(task.due_date).toLocaleDateString()}
+                          {new Date(task.due_date).toLocaleDateString("pt-BR")}
                         </span>
                       )}
                     </div>
                   </div>
                 </div>
-                <button
-                  onClick={() => handleDeleteTask(task.id)}
-                  className="text-red-500 hover:text-red-700"
-                >
-                  Excluir
-                </button>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() =>
+                      handleUpdateTaskStatus(task.id, !task.completed)
+                    }
+                    className={`text-sm font-medium ${
+                      task.completed
+                        ? "text-yellow-500 hover:text-yellow-700"
+                        : "text-green-500 hover:text-green-700"
+                    }`}
+                  >
+                    {task.completed ? "Desfazer" : "Concluir"}
+                  </button>
+                  <button
+                    onClick={() => handleDeleteTask(task.id)}
+                    className="text-red-500 hover:text-red-700"
+                  >
+                    Excluir
+                  </button>
+                </div>
               </div>
             </div>
           ))

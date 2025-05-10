@@ -59,6 +59,7 @@ export default function Dashboard() {
 
       let focusSessions = [];
       let tasks = [];
+      let githubCommits = 0;
 
       // Tentar buscar sessões de foco
       try {
@@ -92,6 +93,63 @@ export default function Dashboard() {
         console.log("Tabela tasks não existe ainda");
       }
 
+      // Buscar commits do GitHub
+      try {
+        const { data: integration, error: integrationError } = await supabase
+          .from("user_integrations")
+          .select("access_token")
+          .eq("user_id", user?.id)
+          .eq("provider", "github")
+          .single();
+
+        if (!integrationError && integration?.access_token) {
+          // Primeiro, buscar o nome de usuário do GitHub
+          const userResponse = await fetch("https://api.github.com/user", {
+            headers: {
+              Authorization: `Bearer ${integration.access_token}`,
+              Accept: "application/vnd.github.v3+json",
+            },
+          });
+
+          if (userResponse.ok) {
+            const userData = await userResponse.json();
+            const username = userData.login;
+
+            // Agora buscar os eventos do usuário
+            const response = await fetch(
+              `https://api.github.com/users/${username}/events?per_page=100`,
+              {
+                headers: {
+                  Authorization: `Bearer ${integration.access_token}`,
+                  Accept: "application/vnd.github.v3+json",
+                },
+              }
+            );
+
+            if (response.ok) {
+              const events = await response.json();
+              const oneWeekAgo = new Date();
+              oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+
+              githubCommits = events.filter(
+                (event: any) =>
+                  event.type === "PushEvent" &&
+                  new Date(event.created_at) > oneWeekAgo
+              ).length;
+            } else {
+              console.log("Erro ao buscar eventos do GitHub:", response.status);
+            }
+          } else {
+            console.log(
+              "Erro ao buscar dados do usuário:",
+              userResponse.status
+            );
+          }
+        }
+      } catch (error) {
+        console.log("Erro ao buscar commits do GitHub:", error);
+      }
+
       // Calcular estatísticas
       const totalFocusTime =
         focusSessions.reduce(
@@ -115,7 +173,7 @@ export default function Dashboard() {
         completedTasks,
         upcomingTasks,
         weeklyProgress,
-        githubCommits: 0, // TODO: Implementar integração com GitHub
+        githubCommits,
       });
     } catch (error) {
       console.error("Erro ao buscar estatísticas:", error);

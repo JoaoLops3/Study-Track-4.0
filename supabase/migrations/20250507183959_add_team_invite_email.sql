@@ -56,10 +56,10 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 DO $$ 
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'send_team_invite_email_trigger') THEN
-        CREATE TRIGGER send_team_invite_email_trigger
-            AFTER INSERT ON public.team_invites
-            FOR EACH ROW
-            EXECUTE FUNCTION public.send_team_invite_email();
+CREATE TRIGGER send_team_invite_email_trigger
+  AFTER INSERT ON public.team_invites
+  FOR EACH ROW
+  EXECUTE FUNCTION public.send_team_invite_email();
     END IF;
 END $$;
 

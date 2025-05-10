@@ -48,18 +48,11 @@ const PomodoroContext = createContext<PomodoroContextType | undefined>(
 
 export function PomodoroProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
-  const [state, setState] = useState<PomodoroState>(() => {
-    const savedState = localStorage.getItem("pomodoroState");
-    if (savedState) {
-      return JSON.parse(savedState);
-    }
-    return {
-      mode: "focus",
-      timeLeft: defaultSettings.focusDuration,
-      isRunning: false,
-      rounds: 0,
-    };
-  });
+  const timerRef = useRef<NodeJS.Timeout>();
+  const startTimeRef = useRef<number>(0);
+  const initialTimeRef = useRef<number>(0);
+
+  // Primeiro inicializamos as configurações
   const [settings, setSettings] = useState<PomodoroSettings>(() => {
     const savedSettings = localStorage.getItem("pomodoroSettings");
     if (savedSettings) {
@@ -67,7 +60,42 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
     }
     return defaultSettings;
   });
-  const timerRef = useRef<NodeJS.Timeout>();
+
+  // Função para obter o tempo correto baseado no modo
+  const getTimeForMode = (mode: "focus" | "shortBreak" | "longBreak") => {
+    return mode === "focus"
+      ? settings.focusDuration
+      : mode === "shortBreak"
+      ? settings.shortBreakDuration
+      : settings.longBreakDuration;
+  };
+
+  // Depois inicializamos o estado usando as configurações já definidas
+  const [state, setState] = useState<PomodoroState>(() => {
+    const savedState = localStorage.getItem("pomodoroState");
+    if (savedState) {
+      const parsedState = JSON.parse(savedState);
+      return {
+        ...parsedState,
+        timeLeft: getTimeForMode(parsedState.mode),
+        isRunning: false, // Sempre começa parado ao recarregar
+      };
+    }
+    return {
+      mode: "focus",
+      timeLeft: getTimeForMode("focus"),
+      isRunning: false,
+      rounds: 0,
+    };
+  });
+
+  // Atualizar o tempo quando o modo mudar
+  useEffect(() => {
+    setState((prev) => ({
+      ...prev,
+      timeLeft: getTimeForMode(prev.mode),
+    }));
+  }, [settings]);
 
   // Salvar estado no localStorage
   useEffect(() => {
@@ -107,7 +135,12 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
             setSettings(newSettings);
             setState((prev) => ({
               ...prev,
-              timeLeft: data.focus_duration,
+              timeLeft:
+                prev.mode === "focus"
+                  ? data.focus_duration
+                  : prev.mode === "shortBreak"
+                  ? data.short_break_duration
+                  : data.long_break_duration,
             }));
           }
         } catch (error) {
@@ -154,16 +187,27 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
   // Timer logic
   useEffect(() => {
     if (state.isRunning) {
+      startTimeRef.current = Date.now();
+      initialTimeRef.current = state.timeLeft;
+
       timerRef.current = setInterval(() => {
+        const elapsedSeconds = Math.floor(
+          (Date.now() - startTimeRef.current) / 1000
+        );
+        const newTimeLeft = Math.max(
+          0,
+          initialTimeRef.current - elapsedSeconds
+        );
+
         setState((prev) => {
-          if (prev.timeLeft <= 0) {
+          if (newTimeLeft <= 0) {
             clearInterval(timerRef.current);
             handleTimerComplete();
             return prev;
           }
           return {
             ...prev,
-            timeLeft: prev.timeLeft - 1,
+            timeLeft: newTimeLeft,
           };
         });
       }, 1000);
@@ -176,86 +220,87 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
     };
   }, [state.isRunning]);
 
-  const handleTimerComplete = () => {
-    // Play notification sound
-    const audio = new Audio("/notification.mp3");
-    audio.play().catch(() => console.log("Erro ao tocar áudio"));
+  // Atualizar o timer quando a aba voltar a ter foco
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        if (state.isRunning) {
+          const elapsedSeconds = Math.floor(
+            (Date.now() - startTimeRef.current) / 1000
+          );
+          const newTimeLeft = Math.max(
+            0,
+            initialTimeRef.current - elapsedSeconds
+          );
 
-    if (state.mode === "focus") {
-      if (state.rounds + 1 >= settings.rounds) {
-        // Completed all rounds, take a long break
-        setState({
-          mode: "longBreak",
-          timeLeft: settings.longBreakDuration,
-          isRunning: false,
-          rounds: 0,
-        });
-      } else {
-        // Take a short break
-        setState({
-          mode: "shortBreak",
-          timeLeft: settings.shortBreakDuration,
-          isRunning: false,
-          rounds: state.rounds + 1,
-        });
+          setState((prev) => ({
+            ...prev,
+            timeLeft: newTimeLeft,
+          }));
+        } else {
+          // Se não estiver rodando, mantém o tempo atual
+          setState((prev) => ({
+            ...prev,
+            timeLeft: prev.timeLeft,
+          }));
+        }
       }
-    } else {
-      // Break is over, start next focus session
-      setState({
-        mode: "focus",
-        timeLeft: settings.focusDuration,
-        isRunning: false,
-        rounds: state.rounds,
-      });
-    }
-  };
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [state.isRunning]);
 
   const startTimer = () => {
+    startTimeRef.current = Date.now();
+    initialTimeRef.current = state.timeLeft;
     setState((prev) => ({ ...prev, isRunning: true }));
   };
 
   const pauseTimer = () => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+    }
     setState((prev) => ({ ...prev, isRunning: false }));
   };
 
   const resetTimer = () => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+    }
     setState((prev) => ({
       ...prev,
-      timeLeft:
-        prev.mode === "focus"
-          ? settings.focusDuration
-          : prev.mode === "shortBreak"
-          ? settings.shortBreakDuration
-          : settings.longBreakDuration,
+      timeLeft: getTimeForMode(prev.mode),
       isRunning: false,
     }));
   };
 
   const skipToNext = () => {
-    if (state.mode === "focus") {
-      if (state.rounds + 1 >= settings.rounds) {
-        setState({
-          mode: "longBreak",
-          timeLeft: settings.longBreakDuration,
-          isRunning: false,
-          rounds: 0,
-        });
-      } else {
-        setState({
-          mode: "shortBreak",
-          timeLeft: settings.shortBreakDuration,
-          isRunning: false,
-          rounds: state.rounds + 1,
-        });
-      }
-    } else {
-      setState({
-        mode: "focus",
-        timeLeft: settings.focusDuration,
-        isRunning: false,
-        rounds: state.rounds,
-      });
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
     }
+
+    setState((prev) => {
+      const isLastRound = prev.rounds + 1 >= settings.rounds;
+      const nextMode =
+        prev.mode === "focus"
+          ? isLastRound
+            ? "longBreak"
+            : "shortBreak"
+          : "focus";
+
+      return {
+        mode: nextMode,
+        timeLeft: getTimeForMode(nextMode),
+        isRunning: false,
+        rounds:
+          nextMode === "focus"
+            ? (prev.rounds + 1) % settings.rounds
+            : prev.rounds,
+      };
+    });
   };
 
   const updateSettings = (newSettings: Partial<PomodoroSettings>) => {
@@ -263,14 +308,42 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
       const updated = { ...prev, ...newSettings };
       setState((state) => ({
         ...state,
-        timeLeft:
-          state.mode === "focus"
-            ? updated.focusDuration
-            : state.mode === "shortBreak"
-            ? updated.shortBreakDuration
-            : updated.longBreakDuration,
+        timeLeft: getTimeForMode(state.mode),
       }));
       return updated;
+    });
+  };
+
+  const handleTimerComplete = () => {
+    const audio = new Audio("/notification.mp3");
+    audio.play();
+
+    setState((prev) => {
+      const isLastRound = prev.rounds + 1 >= settings.rounds;
+      const nextMode =
+        prev.mode === "focus"
+          ? isLastRound
+            ? "longBreak"
+            : "shortBreak"
+          : "focus";
+
+      toast.success(
+        nextMode === "focus"
+          ? "Hora de focar!"
+          : nextMode === "shortBreak"
+          ? "Hora de uma pausa curta!"
+          : "Hora de uma pausa longa!"
+      );
+
+      return {
+        mode: nextMode,
+        timeLeft: getTimeForMode(nextMode),
+        isRunning: false,
+        rounds:
+          nextMode === "focus"
+            ? (prev.rounds + 1) % settings.rounds
+            : prev.rounds,
+      };
     });
   };
 

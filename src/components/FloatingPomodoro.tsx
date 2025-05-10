@@ -126,7 +126,7 @@ export default function FloatingPomodoro() {
   return (
     <div
       ref={pomodoroRef}
-      className="fixed bg-gray-900 dark:bg-gray-900 rounded-2xl shadow-2xl p-6 w-96 z-50 text-white"
+      className="fixed bg-gray-900 dark:bg-gray-900 rounded-2xl shadow-2xl p-4 sm:p-6 w-[280px] sm:w-96 z-50 text-white"
       style={{
         left: `${position.x}px`,
         top: `${position.y}px`,
@@ -138,20 +138,20 @@ export default function FloatingPomodoro() {
         className="flex items-center justify-between mb-2 cursor-grab"
         onMouseDown={handleMouseDown}
       >
-        <h2 className="text-2xl font-bold">Pomodoro Flutuante</h2>
+        <h2 className="text-xl sm:text-2xl font-bold">Pomodoro Flutuante</h2>
         <button
           onClick={() => setIsOpen(false)}
           className="text-gray-400 hover:text-gray-200"
         >
-          <X className="w-6 h-6" />
+          <X className="w-5 h-5 sm:w-6 sm:h-6" />
         </button>
       </div>
-      <p className="text-gray-400 mb-4 text-center text-sm">
+      <p className="text-gray-400 mb-4 text-center text-xs sm:text-sm">
         Mantenha o foco e seja produtivo com sessões cronometradas
       </p>
 
       {/* Mode Tabs */}
-      <div className="flex mb-6 rounded-xl overflow-hidden bg-gray-800">
+      <div className="flex mb-4 sm:mb-6 rounded-xl overflow-hidden bg-gray-800">
         {MODES.map((m) => (
           <button
             key={m.key}
@@ -168,7 +168,7 @@ export default function FloatingPomodoro() {
                 isRunning: false,
               }));
             }}
-            className={`flex-1 py-2 text-base font-medium transition-colors
+            className={`flex-1 py-1.5 sm:py-2 text-sm sm:text-base font-medium transition-colors
               ${
                 state.mode === m.key
                   ? "bg-gray-700 text-white"
@@ -181,67 +181,69 @@ export default function FloatingPomodoro() {
       </div>
 
       {/* Timer */}
-      <div className="flex flex-col items-center bg-gray-800 rounded-2xl py-8 mb-4">
-        <span className="text-5xl font-extrabold tracking-widest">
+      <div className="flex flex-col items-center bg-gray-800 rounded-2xl py-6 sm:py-8 mb-4">
+        <span className="text-4xl sm:text-5xl font-extrabold tracking-widest">
           {formatTime(state.timeLeft)}
         </span>
-        <span className="text-gray-400 mt-2">
+        <span className="text-gray-400 mt-2 text-sm sm:text-base">
           Rodada {state.rounds + 1}/{settings.rounds}
         </span>
       </div>
 
       {/* Controls */}
-      <div className="flex justify-center gap-6 mb-6">
+      <div className="flex justify-center gap-4 sm:gap-6 mb-4 sm:mb-6">
         <button
           onClick={resetTimer}
-          className="w-12 h-12 flex items-center justify-center rounded-full bg-gray-700 hover:bg-gray-600 text-gray-300 text-xl"
+          className="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center rounded-full bg-gray-700 hover:bg-gray-600 text-gray-300 text-lg sm:text-xl"
           aria-label="Reiniciar"
         >
-          <RotateCcw className="w-6 h-6" />
+          <RotateCcw className="w-5 h-5 sm:w-6 sm:h-6" />
         </button>
         {state.isRunning ? (
           <button
             onClick={pauseTimer}
-            className="w-16 h-16 flex items-center justify-center rounded-full bg-pink-600 hover:bg-pink-700 text-white text-2xl shadow-lg"
+            className="w-14 h-14 sm:w-16 sm:h-16 flex items-center justify-center rounded-full bg-pink-600 hover:bg-pink-700 text-white text-xl sm:text-2xl shadow-lg"
             aria-label="Pausar"
           >
-            <Pause className="w-8 h-8" />
+            <Pause className="w-7 h-7 sm:w-8 sm:h-8" />
           </button>
         ) : (
           <button
             onClick={startTimer}
-            className="w-16 h-16 flex items-center justify-center rounded-full bg-pink-600 hover:bg-pink-700 text-white text-2xl shadow-lg"
+            className="w-14 h-14 sm:w-16 sm:h-16 flex items-center justify-center rounded-full bg-pink-600 hover:bg-pink-700 text-white text-xl sm:text-2xl shadow-lg"
             aria-label="Iniciar"
           >
-            <Play className="w-8 h-8" />
+            <Play className="w-7 h-7 sm:w-8 sm:h-8" />
           </button>
         )}
         <button
           onClick={skipToNext}
-          className="w-12 h-12 flex items-center justify-center rounded-full bg-gray-700 hover:bg-gray-600 text-gray-300 text-xl"
+          className="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center rounded-full bg-gray-700 hover:bg-gray-600 text-gray-300 text-lg sm:text-xl"
           aria-label="Pular"
         >
-          <SkipForward className="w-6 h-6" />
+          <SkipForward className="w-5 h-5 sm:w-6 sm:h-6" />
         </button>
       </div>
 
       {/* Settings button */}
       <button
         onClick={() => setShowSettings(!showSettings)}
-        className="flex items-center justify-center w-full py-3 px-4 bg-gray-800 rounded-lg hover:bg-gray-700 transition-colors"
+        className="flex items-center justify-center w-full py-2 sm:py-3 px-3 sm:px-4 bg-gray-800 rounded-lg hover:bg-gray-700 transition-colors text-sm sm:text-base"
       >
-        <SettingsIcon size={16} className="mr-2" />
+        <SettingsIcon size={14} className="mr-2 sm:mr-2" />
         <span>Configurações do Timer</span>
       </button>
 
       {/* Settings panel */}
       {showSettings && (
-        <div className="mt-6 bg-gray-800 rounded-lg shadow-lg p-6">
-          <h3 className="text-lg font-medium mb-4">Configurações do Timer</h3>
+        <div className="mt-4 sm:mt-6 bg-gray-800 rounded-lg shadow-lg p-4 sm:p-6">
+          <h3 className="text-base sm:text-lg font-medium mb-3 sm:mb-4">
+            Configurações do Timer
+          </h3>
 
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-1">
+              <label className="block text-xs sm:text-sm font-medium mb-1">
                 Duração do Foco (minutos)
               </label>
               <input
@@ -254,12 +256,12 @@ export default function FloatingPomodoro() {
                     focusDuration: parseInt(e.target.value) * 60,
                   })
                 }
-                className="w-full px-3 py-2 border dark:border-gray-700 rounded-md bg-gray-900"
+                className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border dark:border-gray-700 rounded-md bg-gray-900 text-sm sm:text-base"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1">
+              <label className="block text-xs sm:text-sm font-medium mb-1">
                 Pausa Curta (minutos)
               </label>
               <input
@@ -272,12 +274,12 @@ export default function FloatingPomodoro() {
                     shortBreakDuration: parseInt(e.target.value) * 60,
                   })
                 }
-                className="w-full px-3 py-2 border dark:border-gray-700 rounded-md bg-gray-900"
+                className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border dark:border-gray-700 rounded-md bg-gray-900 text-sm sm:text-base"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1">
+              <label className="block text-xs sm:text-sm font-medium mb-1">
                 Pausa Longa (minutos)
               </label>
               <input
@@ -290,12 +292,12 @@ export default function FloatingPomodoro() {
                     longBreakDuration: parseInt(e.target.value) * 60,
                   })
                 }
-                className="w-full px-3 py-2 border dark:border-gray-700 rounded-md bg-gray-900"
+                className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border dark:border-gray-700 rounded-md bg-gray-900 text-sm sm:text-base"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1">
+              <label className="block text-xs sm:text-sm font-medium mb-1">
                 Número de Rodadas
               </label>
               <input
@@ -308,7 +310,7 @@ export default function FloatingPomodoro() {
                     rounds: parseInt(e.target.value),
                   })
                 }
-                className="w-full px-3 py-2 border dark:border-gray-700 rounded-md bg-gray-900"
+                className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border dark:border-gray-700 rounded-md bg-gray-900 text-sm sm:text-base"
               />
             </div>
           </div>

@@ -24,27 +24,27 @@ ALTER TABLE events ENABLE ROW LEVEL SECURITY;
 DO $$ 
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'events' AND policyname = 'Users can view their own events') THEN
-        CREATE POLICY "Users can view their own events"
-            ON events FOR SELECT
-            USING (auth.uid() = user_id);
+CREATE POLICY "Users can view their own events"
+  ON events FOR SELECT
+  USING (auth.uid() = user_id);
     END IF;
 
     IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'events' AND policyname = 'Users can insert their own events') THEN
-        CREATE POLICY "Users can insert their own events"
-            ON events FOR INSERT
-            WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can insert their own events"
+  ON events FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
     END IF;
 
     IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'events' AND policyname = 'Users can update their own events') THEN
-        CREATE POLICY "Users can update their own events"
-            ON events FOR UPDATE
-            USING (auth.uid() = user_id);
+CREATE POLICY "Users can update their own events"
+  ON events FOR UPDATE
+  USING (auth.uid() = user_id);
     END IF;
 
     IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'events' AND policyname = 'Users can delete their own events') THEN
-        CREATE POLICY "Users can delete their own events"
-            ON events FOR DELETE
-            USING (auth.uid() = user_id);
+CREATE POLICY "Users can delete their own events"
+  ON events FOR DELETE
+  USING (auth.uid() = user_id);
     END IF;
 END $$;
 
@@ -52,9 +52,9 @@ END $$;
 DO $$ 
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'update_events_updated_at') THEN
-        CREATE TRIGGER update_events_updated_at
-            BEFORE UPDATE ON events
-            FOR EACH ROW
-            EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_events_updated_at
+    BEFORE UPDATE ON events
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column(); 
     END IF;
 END $$; 
