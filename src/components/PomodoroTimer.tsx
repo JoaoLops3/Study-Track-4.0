@@ -1,29 +1,37 @@
-import { useEffect } from "react";
-import { usePomodoro } from "../contexts/PomodoroContext";
-import { useAuth } from "../contexts/AuthContext";
-import { supabase } from "../lib/supabase";
+import { motion } from "framer-motion";
+import { Clock, Pause, Play, RotateCcw } from "lucide-react";
+import React, { useCallback } from "react";
 import { toast } from "react-hot-toast";
-import {
-  Play,
-  Pause,
-  RotateCcw,
-  SkipForward,
-  Settings as SettingsIcon,
-} from "lucide-react";
+import { useAuth } from "../contexts/AuthContext";
+import { usePomodoro } from "../contexts/PomodoroContext";
+import { useTheme } from "../contexts/ThemeContext";
+import { supabase } from "../lib/supabase";
+import useStore from "../store";
 
-const MODES = [
-  { key: "focus", label: "Foco", duration: 25 * 60 },
-  { key: "shortBreak", label: "Pausa Curta", duration: 5 * 60 },
-  { key: "longBreak", label: "Pausa Longa", duration: 15 * 60 },
+interface QuickTime {
+  label: string;
+  duration: number;
+}
+
+interface QuickAction {
+  label: string;
+  minutes: number;
+}
+
+const QUICK_TIMES: QuickTime[] = [
+  { label: "5m", duration: 5 * 60 },
+  { label: "15m", duration: 15 * 60 },
+  { label: "25m", duration: 25 * 60 },
+  { label: "45m", duration: 45 * 60 },
+  { label: "60m", duration: 60 * 60 },
 ];
 
-function formatTime(seconds: number) {
-  const m = Math.floor(seconds / 60)
-    .toString()
-    .padStart(2, "0");
-  const s = (seconds % 60).toString().padStart(2, "0");
-  return `${m}:${s}`;
-}
+const QUICK_ACTIONS: QuickAction[] = [
+  { label: "+60m", minutes: 60 },
+  { label: "+180m", minutes: 180 },
+  { label: "+420m", minutes: 420 },
+  { label: "+840m", minutes: 840 },
+];
 
 export default function PomodoroTimer() {
   const { user } = useAuth();
@@ -33,205 +41,197 @@ export default function PomodoroTimer() {
     startTimer,
     pauseTimer,
     resetTimer,
-    skipToNext,
     updateSettings,
-    setState,
+    setTimerTime,
+    resetToShortBreak,
   } = usePomodoro();
 
-  // Salvar sessão quando completar um foco
-  useEffect(() => {
-    if (state.timeLeft === 0 && state.mode === "focus" && state.isRunning) {
-      saveSession();
-    }
-  }, [state.timeLeft, state.mode, state.isRunning]);
+  const { completeStudySession, resetProgress, loadProgress } = useStore();
+  const { theme } = useTheme();
 
-  const saveSession = async () => {
-    if (!user) return;
+  const formatTime = (seconds: number): string => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes.toString().padStart(2, "0")}:${remainingSeconds
+      .toString()
+      .padStart(2, "0")}`;
+  };
+
+  const handleQuickTime = useCallback(
+    (duration: number) => {
+      if (state.isRunning) {
+        pauseTimer();
+      }
+      updateSettings({ focusDuration: duration });
+      resetTimer();
+    },
+    [state.isRunning, pauseTimer, updateSettings, resetTimer]
+  );
+
+  const handleCompleteSession = async (minutes: number): Promise<void> => {
+    if (!user) {
+      toast.error("Você precisa estar logado para registrar sessões de estudo");
+      return;
+    }
 
     try {
-      const { error } = await supabase.from("pomodoro_sessions").insert({
-        user_id: user.id,
-        mode: state.mode,
-        duration: settings.focusDuration,
-        completed: true,
-      });
+      const { data: subjectId, error: subjectError } = await supabase.rpc(
+        "create_default_subject"
+      );
 
-      if (error) {
-        console.error("Erro ao salvar sessão:", error);
-        toast.error("Erro ao salvar sessão do Pomodoro");
-        return;
+      if (subjectError) {
+        console.error("Erro ao obter matéria padrão:", subjectError);
+        throw new Error("Erro ao configurar matéria padrão");
       }
 
-      toast.success("Sessão do Pomodoro salva com sucesso!");
+      const { error } = await supabase.from("study_sessions").insert({
+        user_id: user.id,
+        subject_id: subjectId,
+        minutes_studied: minutes,
+        completed_at: new Date().toISOString(),
+      });
+
+      if (error) throw error;
+
+      await completeStudySession(minutes);
+      await loadProgress();
+
+      toast.success(`${minutes} minutos adicionados com sucesso!`);
     } catch (error) {
-      console.error("Erro ao salvar sessão:", error);
-      toast.error("Erro ao salvar sessão do Pomodoro");
+      console.error("Erro ao adicionar tempo:", error);
+      toast.error("Erro ao adicionar tempo");
     }
   };
 
-  // Atualizar título da página
-  useEffect(() => {
-    const modeLabel = MODES.find((m) => m.key === state.mode)?.label || "";
-    document.title = `${formatTime(
-      state.timeLeft
-    )} - ${modeLabel} | Study Track`;
-  }, [state.timeLeft, state.mode]);
+  const handleQuickAction = async (minutes: number): Promise<void> => {
+    await handleCompleteSession(minutes);
+  };
+
+  const handleResetProgress = async (): Promise<void> => {
+    if (!user) {
+      toast.error("Você precisa estar logado para resetar o progresso");
+      return;
+    }
+
+    if (
+      window.confirm(
+        "Tem certeza que deseja resetar todo o progresso? Esta ação não pode ser desfeita."
+      )
+    ) {
+      await resetProgress();
+      await loadProgress();
+    }
+  };
 
   return (
-    <div className="max-w-2xl mx-auto p-6">
-      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl p-8">
-        {/* Mode Tabs */}
-        <div className="flex mb-8 rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800">
-          {MODES.map((m) => (
+    <div
+      className={`w-full rounded-xl shadow-sm p-6 ${
+        theme === "dark" ? "bg-gray-800" : "bg-white"
+      }`}
+    >
+      <h3
+        className={`text-xl font-semibold mb-4 ${
+          theme === "dark" ? "text-gray-200" : "text-gray-800"
+        }`}
+      >
+        Timer de Foco
+      </h3>
+      <div className="flex flex-col items-center">
+        <motion.div
+          className={`text-5xl font-mono font-bold mb-6 ${
+            theme === "dark" ? "text-gray-200" : "text-gray-800"
+          }`}
+          animate={{ scale: state.isRunning ? [1, 1.03, 1] : 1 }}
+          transition={{
+            repeat: state.isRunning ? Number.POSITIVE_INFINITY : 0,
+            duration: 2,
+          }}
+        >
+          {formatTime(state.timeLeft)}
+        </motion.div>
+        <div className="flex space-x-4 mb-6">
+          <button
+            type="button"
+            onClick={state.isRunning ? pauseTimer : startTimer}
+            className="bg-green-500 hover:bg-green-600 text-white p-3 rounded-full transition-colors"
+          >
+            {state.isRunning ? (
+              <Pause className="w-6 h-6" />
+            ) : (
+              <Play className="w-6 h-6" />
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={resetToShortBreak}
+            className={`p-3 rounded-full transition-colors ${
+              theme === "dark"
+                ? "bg-gray-700 hover:bg-gray-600 text-gray-300"
+                : "bg-gray-200 hover:bg-gray-300 text-gray-700"
+            }`}
+          >
+            <RotateCcw className="w-6 h-6" />
+          </button>
+        </div>
+        <div className="flex flex-wrap gap-2 justify-center mb-6">
+          {QUICK_TIMES.map((time) => (
             <button
-              key={m.key}
-              onClick={() => {
-                setState((prev) => ({
-                  ...prev,
-                  mode: m.key as "focus" | "shortBreak" | "longBreak",
-                  timeLeft:
-                    m.key === "focus"
-                      ? settings.focusDuration
-                      : m.key === "shortBreak"
-                      ? settings.shortBreakDuration
-                      : settings.longBreakDuration,
-                  isRunning: false,
-                }));
-              }}
-              className={`flex-1 py-3 text-base font-medium transition-colors
-                ${
-                  state.mode === m.key
-                    ? "bg-indigo-600 text-white"
-                    : "text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
-                }`}
+              key={time.label}
+              type="button"
+              onClick={() => handleQuickTime(time.duration)}
+              className={`flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium transition-colors border ${
+                state.timeLeft === time.duration &&
+                (state.isPaused || !state.isBreak)
+                  ? ""
+                  : theme === "dark"
+                  ? "bg-gray-700 text-gray-300 border-gray-600 hover:bg-gray-600"
+                  : "bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200"
+              }`}
             >
-              {m.label}
+              <Clock className="w-3.5 h-3.5" />
+              {time.label}
             </button>
           ))}
         </div>
-
-        {/* Timer */}
-        <div className="flex flex-col items-center bg-gray-100 dark:bg-gray-800 rounded-2xl py-12 mb-8">
-          <span className="text-7xl font-extrabold tracking-widest text-gray-900 dark:text-white">
-            {formatTime(state.timeLeft)}
-          </span>
-          <span className="text-gray-500 dark:text-gray-400 mt-4">
-            Rodada {state.rounds + 1}/{settings.rounds}
-          </span>
-        </div>
-
-        {/* Controls */}
-        <div className="flex justify-center gap-8 mb-8">
-          <button
-            onClick={resetTimer}
-            className="w-14 h-14 flex items-center justify-center rounded-full bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 text-xl"
-            aria-label="Reiniciar"
-          >
-            <RotateCcw className="w-7 h-7" />
-          </button>
-          {state.isRunning ? (
-            <button
-              onClick={pauseTimer}
-              className="w-20 h-20 flex items-center justify-center rounded-full bg-indigo-600 hover:bg-indigo-700 text-white text-3xl shadow-lg"
-              aria-label="Pausar"
+        <div
+          className={`w-full pt-4 border-t ${
+            theme === "dark" ? "border-gray-700" : "border-gray-200"
+          }`}
+        >
+          <div className="flex flex-col gap-2">
+            <div
+              className={`text-sm font-medium ${
+                theme === "dark" ? "text-gray-400" : "text-gray-500"
+              }`}
             >
-              <Pause className="w-10 h-10" />
-            </button>
-          ) : (
-            <button
-              onClick={startTimer}
-              className="w-20 h-20 flex items-center justify-center rounded-full bg-indigo-600 hover:bg-indigo-700 text-white text-3xl shadow-lg"
-              aria-label="Iniciar"
-            >
-              <Play className="w-10 h-10" />
-            </button>
-          )}
-          <button
-            onClick={skipToNext}
-            className="w-14 h-14 flex items-center justify-center rounded-full bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 text-xl"
-            aria-label="Pular"
-          >
-            <SkipForward className="w-7 h-7" />
-          </button>
-        </div>
-
-        {/* Settings */}
-        <div className="bg-gray-100 dark:bg-gray-800 rounded-xl p-6">
-          <h3 className="text-lg font-medium mb-4 text-gray-900 dark:text-white">
-            Configurações do Timer
-          </h3>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">
-                Duração do Foco (minutos)
-              </label>
-              <input
-                type="number"
-                min="1"
-                max="60"
-                value={settings.focusDuration / 60}
-                onChange={(e) =>
-                  updateSettings({
-                    focusDuration: parseInt(e.target.value) * 60,
-                  })
-                }
-                className="w-full px-3 py-2 border dark:border-gray-700 rounded-md bg-white dark:bg-gray-900"
-              />
+              Ações Rápidas para Desenvolvedores
             </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">
-                Pausa Curta (minutos)
-              </label>
-              <input
-                type="number"
-                min="1"
-                max="30"
-                value={settings.shortBreakDuration / 60}
-                onChange={(e) =>
-                  updateSettings({
-                    shortBreakDuration: parseInt(e.target.value) * 60,
-                  })
-                }
-                className="w-full px-3 py-2 border dark:border-gray-700 rounded-md bg-white dark:bg-gray-900"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">
-                Pausa Longa (minutos)
-              </label>
-              <input
-                type="number"
-                min="1"
-                max="60"
-                value={settings.longBreakDuration / 60}
-                onChange={(e) =>
-                  updateSettings({
-                    longBreakDuration: parseInt(e.target.value) * 60,
-                  })
-                }
-                className="w-full px-3 py-2 border dark:border-gray-700 rounded-md bg-white dark:bg-gray-900"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">
-                Número de Rodadas
-              </label>
-              <input
-                type="number"
-                min="1"
-                max="10"
-                value={settings.rounds}
-                onChange={(e) =>
-                  updateSettings({
-                    rounds: parseInt(e.target.value),
-                  })
-                }
-                className="w-full px-3 py-2 border dark:border-gray-700 rounded-md bg-white dark:bg-gray-900"
-              />
+            <div className="flex flex-wrap gap-2">
+              {QUICK_ACTIONS.map((action) => (
+                <button
+                  key={action.label}
+                  type="button"
+                  onClick={() => handleQuickAction(action.minutes)}
+                  className={`px-3 py-1 text-sm rounded-full transition-colors ${
+                    theme === "dark"
+                      ? "bg-blue-900 text-blue-300 hover:bg-blue-800"
+                      : "bg-blue-100 text-blue-700 hover:bg-blue-200"
+                  }`}
+                >
+                  {action.label}
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={handleResetProgress}
+                className={`px-3 py-1 text-sm rounded-full transition-colors ${
+                  theme === "dark"
+                    ? "bg-red-900 text-red-300 hover:bg-red-800"
+                    : "bg-red-100 text-red-700 hover:bg-red-200"
+                }`}
+              >
+                Reset
+              </button>
             </div>
           </div>
         </div>

@@ -11,6 +11,7 @@ import { supabase } from "../lib/supabase";
 import { useAuth } from "../contexts/AuthContext";
 import { toast } from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
+import { useTheme } from "../contexts/ThemeContext";
 
 interface Task {
   id: string;
@@ -26,6 +27,7 @@ interface Task {
 
 export default function Tasks() {
   const { user } = useAuth();
+  const { theme } = useTheme();
   const navigate = useNavigate();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -235,7 +237,7 @@ export default function Tasks() {
   const getPriorityColor = (priority: Task["priority"]) => {
     switch (priority) {
       case "high":
-        return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-200";
+        return "bg-red-1000 text-red-900 dark:bg-red-900/30 dark:text-red-200";
       case "medium":
         return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-200";
       default:
@@ -260,20 +262,32 @@ export default function Tasks() {
       {/* Filters */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+          <Search
+            className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${
+              theme === "dark" ? "text-gray-400" : "text-gray-500"
+            } w-5 h-5`}
+          />
           <input
             type="text"
             placeholder="Buscar tarefas..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800"
+            className={`w-full pl-10 pr-4 py-2 border rounded-lg ${
+              theme === "dark"
+                ? "bg-gray-800 border-gray-700 text-gray-200 placeholder-gray-400"
+                : "bg-white border-gray-300 text-gray-800 placeholder-gray-500"
+            }`}
           />
         </div>
 
         <select
           value={filterCompleted}
           onChange={(e) => setFilterCompleted(e.target.value)}
-          className="px-4 py-2 border dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800"
+          className={`px-4 py-2 border rounded-lg ${
+            theme === "dark"
+              ? "bg-gray-800 border-gray-700 text-gray-200"
+              : "bg-white border-gray-300 text-gray-800"
+          }`}
         >
           <option value="all">Todos os status</option>
           <option value="pending">Pendente</option>
@@ -283,7 +297,11 @@ export default function Tasks() {
         <select
           value={filterPriority}
           onChange={(e) => setFilterPriority(e.target.value)}
-          className="px-4 py-2 border dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800"
+          className={`px-4 py-2 border rounded-lg ${
+            theme === "dark"
+              ? "bg-gray-800 border-gray-700 text-gray-200"
+              : "bg-white border-gray-300 text-gray-800"
+          }`}
         >
           <option value="all">Todas as prioridades</option>
           <option value="low">Baixa</option>
@@ -295,18 +313,28 @@ export default function Tasks() {
       {/* Tasks List */}
       <div className="space-y-4">
         {isLoading ? (
-          <div className="text-center py-8">Carregando tarefas...</div>
+          <div
+            className={`text-center py-8 ${
+              theme === "dark" ? "text-gray-400" : "text-gray-600"
+            }`}
+          >
+            Carregando tarefas...
+          </div>
         ) : sortedTasks.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
+          <div
+            className={`text-center py-8 ${
+              theme === "dark" ? "text-gray-400" : "text-gray-500"
+            }`}
+          >
             Nenhuma tarefa encontrada
           </div>
         ) : (
           sortedTasks.map((task) => (
             <div
               key={task.id}
-              className={`bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 ${
-                task.completed ? "opacity-75" : ""
-              }`}
+              className={`rounded-lg shadow-sm p-4 ${
+                theme === "dark" ? "bg-gray-800" : "bg-white"
+              } ${task.completed ? "opacity-75" : ""}`}
             >
               <div className="flex items-start justify-between">
                 <div className="flex items-start space-x-4">
@@ -321,15 +349,15 @@ export default function Tasks() {
                   <div>
                     <h3
                       className={`font-medium ${
-                        task.completed ? "line-through" : ""
-                      }`}
+                        theme === "dark" ? "text-gray-200" : "text-gray-800"
+                      } ${task.completed ? "line-through" : ""}`}
                     >
                       {task.title}
                     </h3>
                     <p
-                      className={`text-gray-600 dark:text-gray-400 mt-1 ${
-                        task.completed ? "line-through" : ""
-                      }`}
+                      className={`mt-1 ${
+                        theme === "dark" ? "text-gray-400" : "text-gray-600"
+                      } ${task.completed ? "line-through" : ""}`}
                     >
                       {task.description}
                     </p>
@@ -351,6 +379,8 @@ export default function Tasks() {
                             new Date(task.due_date) < new Date() &&
                             !task.completed
                               ? "text-red-500"
+                              : theme === "dark"
+                              ? "text-gray-400"
                               : "text-gray-500"
                           }`}
                         >
@@ -390,23 +420,47 @@ export default function Tasks() {
       {/* New Task Modal */}
       {showNewTaskModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md">
-            <h2 className="text-xl font-bold mb-4">Nova Tarefa</h2>
+          <div
+            className={`rounded-lg p-6 w-full max-w-md ${
+              theme === "dark" ? "bg-gray-800" : "bg-white"
+            }`}
+          >
+            <h2
+              className={`text-xl font-bold mb-4 ${
+                theme === "dark" ? "text-gray-200" : "text-gray-800"
+              }`}
+            >
+              Nova Tarefa
+            </h2>
             <form onSubmit={handleCreateTask} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-1">Título</label>
+                <label
+                  className={`block text-sm font-medium mb-1 ${
+                    theme === "dark" ? "text-gray-200" : "text-gray-800"
+                  }`}
+                >
+                  Título
+                </label>
                 <input
                   type="text"
                   value={newTask.title}
                   onChange={(e) =>
                     setNewTask({ ...newTask, title: e.target.value })
                   }
-                  className="w-full px-3 py-2 border dark:border-gray-700 rounded-md bg-white dark:bg-gray-900"
+                  className={`w-full px-3 py-2 border rounded-md ${
+                    theme === "dark"
+                      ? "bg-gray-900 border-gray-700 text-gray-200"
+                      : "bg-white border-gray-300 text-gray-800"
+                  }`}
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">
+                <label
+                  className={`block text-sm font-medium mb-1 ${
+                    theme === "dark" ? "text-gray-200" : "text-gray-800"
+                  }`}
+                >
                   Descrição
                 </label>
                 <textarea
@@ -414,12 +468,20 @@ export default function Tasks() {
                   onChange={(e) =>
                     setNewTask({ ...newTask, description: e.target.value })
                   }
-                  className="w-full px-3 py-2 border dark:border-gray-700 rounded-md bg-white dark:bg-gray-900"
+                  className={`w-full px-3 py-2 border rounded-md ${
+                    theme === "dark"
+                      ? "bg-gray-900 border-gray-700 text-gray-200"
+                      : "bg-white border-gray-300 text-gray-800"
+                  }`}
                   rows={3}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">
+                <label
+                  className={`block text-sm font-medium mb-1 ${
+                    theme === "dark" ? "text-gray-200" : "text-gray-800"
+                  }`}
+                >
                   Prioridade
                 </label>
                 <select
@@ -430,7 +492,11 @@ export default function Tasks() {
                       priority: e.target.value as Task["priority"],
                     })
                   }
-                  className="w-full px-3 py-2 border dark:border-gray-700 rounded-md bg-white dark:bg-gray-900"
+                  className={`w-full px-3 py-2 border rounded-md ${
+                    theme === "dark"
+                      ? "bg-gray-900 border-gray-700 text-gray-200"
+                      : "bg-white border-gray-300 text-gray-800"
+                  }`}
                 >
                   <option value="low">Baixa</option>
                   <option value="medium">Média</option>
@@ -438,7 +504,11 @@ export default function Tasks() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">
+                <label
+                  className={`block text-sm font-medium mb-1 ${
+                    theme === "dark" ? "text-gray-200" : "text-gray-800"
+                  }`}
+                >
                   Data de vencimento
                 </label>
                 <input
@@ -447,14 +517,22 @@ export default function Tasks() {
                   onChange={(e) =>
                     setNewTask({ ...newTask, due_date: e.target.value })
                   }
-                  className="w-full px-3 py-2 border dark:border-gray-700 rounded-md bg-white dark:bg-gray-900"
+                  className={`w-full px-3 py-2 border rounded-md ${
+                    theme === "dark"
+                      ? "bg-gray-900 border-gray-700 text-gray-200"
+                      : "bg-white border-gray-300 text-gray-800"
+                  }`}
                 />
               </div>
               <div className="flex justify-end space-x-2">
                 <button
                   type="button"
                   onClick={() => setShowNewTaskModal(false)}
-                  className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+                  className={`px-4 py-2 ${
+                    theme === "dark"
+                      ? "text-gray-400 hover:text-gray-200"
+                      : "text-gray-600 hover:text-gray-800"
+                  }`}
                 >
                   Cancelar
                 </button>

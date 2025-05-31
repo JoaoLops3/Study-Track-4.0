@@ -1,27 +1,30 @@
-import {
+import React, {
   createContext,
   useContext,
-  useState,
+  useReducer,
   useEffect,
-  useRef,
-  ReactNode,
+  useCallback,
 } from "react";
-import { useAuth } from "./AuthContext";
-import { supabase } from "../lib/supabase";
 import { toast } from "react-hot-toast";
+import { supabase } from "../lib/supabase";
+import { useAuth } from "./AuthContext";
 
 interface PomodoroState {
-  mode: "focus" | "shortBreak" | "longBreak";
   timeLeft: number;
   isRunning: boolean;
-  rounds: number;
+  isPaused: boolean;
+  isBreak: boolean;
+  cycles: number;
 }
 
 interface PomodoroSettings {
   focusDuration: number;
   shortBreakDuration: number;
   longBreakDuration: number;
-  rounds: number;
+  longBreakInterval: number;
+  autoStartBreaks: boolean;
+  autoStartPomodoros: boolean;
+  notifications: boolean;
 }
 
 interface PomodoroContextType {
@@ -30,336 +33,346 @@ interface PomodoroContextType {
   startTimer: () => void;
   pauseTimer: () => void;
   resetTimer: () => void;
-  skipToNext: () => void;
   updateSettings: (newSettings: Partial<PomodoroSettings>) => void;
-  setState: React.Dispatch<React.SetStateAction<PomodoroState>>;
+  setTimerTime: (timeInSeconds: number) => void;
+  resetToShortBreak: () => void;
 }
+
+const initialState: PomodoroState = {
+  timeLeft: 25 * 60, // 25 minutos em segundos
+  isRunning: false,
+  isPaused: false,
+  isBreak: false,
+  cycles: 0,
+};
 
 const defaultSettings: PomodoroSettings = {
   focusDuration: 25 * 60,
   shortBreakDuration: 5 * 60,
   longBreakDuration: 15 * 60,
-  rounds: 4,
+  longBreakInterval: 4,
+  autoStartBreaks: true,
+  autoStartPomodoros: true,
+  notifications: true,
 };
 
 const PomodoroContext = createContext<PomodoroContextType | undefined>(
   undefined
 );
 
-export function PomodoroProvider({ children }: { children: ReactNode }) {
-  const { user } = useAuth();
-  const timerRef = useRef<NodeJS.Timeout>();
-  const startTimeRef = useRef<number>(0);
-  const initialTimeRef = useRef<number>(0);
+type PomodoroAction =
+  | { type: "START_TIMER" }
+  | { type: "PAUSE_TIMER" }
+  | { type: "RESET_TIMER" }
+  | { type: "TICK" }
+  | { type: "UPDATE_SETTINGS"; payload: Partial<PomodoroSettings> }
+  | { type: "SWITCH_TO_BREAK" }
+  | { type: "SWITCH_TO_FOCUS" }
+  | { type: "SET_TIME"; payload: number };
 
-  // Primeiro inicializamos as configurações
-  const [settings, setSettings] = useState<PomodoroSettings>(() => {
-    const savedSettings = localStorage.getItem("pomodoroSettings");
-    if (savedSettings) {
-      return JSON.parse(savedSettings);
-    }
-    return defaultSettings;
-  });
-
-  // Função para obter o tempo correto baseado no modo
-  const getTimeForMode = (mode: "focus" | "shortBreak" | "longBreak") => {
-    return mode === "focus"
-      ? settings.focusDuration
-      : mode === "shortBreak"
-      ? settings.shortBreakDuration
-      : settings.longBreakDuration;
-  };
-
-  // Depois inicializamos o estado usando as configurações já definidas
-  const [state, setState] = useState<PomodoroState>(() => {
-    const savedState = localStorage.getItem("pomodoroState");
-    if (savedState) {
-      const parsedState = JSON.parse(savedState);
+function pomodoroReducer(
+  state: PomodoroState,
+  action: PomodoroAction
+): PomodoroState {
+  switch (action.type) {
+    case "START_TIMER":
+      return { ...state, isRunning: true, isPaused: false };
+    case "PAUSE_TIMER":
+      return { ...state, isRunning: false, isPaused: true };
+    case "RESET_TIMER":
       return {
-        ...parsedState,
-        timeLeft: getTimeForMode(parsedState.mode),
-        isRunning: false, // Sempre começa parado ao recarregar
-      };
-    }
-    return {
-      mode: "focus",
-      timeLeft: getTimeForMode("focus"),
-      isRunning: false,
-      rounds: 0,
-    };
-  });
-
-  // Atualizar o tempo quando o modo mudar
-  useEffect(() => {
-    setState((prev) => ({
-      ...prev,
-      timeLeft: getTimeForMode(prev.mode),
-    }));
-  }, [settings]);
-
-  // Salvar estado no localStorage
-  useEffect(() => {
-    localStorage.setItem("pomodoroState", JSON.stringify(state));
-  }, [state]);
-
-  // Salvar configurações no localStorage
-  useEffect(() => {
-    localStorage.setItem("pomodoroSettings", JSON.stringify(settings));
-  }, [settings]);
-
-  // Carregar configurações do Supabase
-  useEffect(() => {
-    if (user) {
-      const loadSettings = async () => {
-        try {
-          const { data, error } = await supabase
-            .from("pomodoro_settings")
-            .select("*")
-            .eq("user_id", user.id)
-            .order("created_at", { ascending: false })
-            .limit(1)
-            .single();
-
-          if (error) {
-            console.error("Erro ao carregar configurações:", error);
-            return;
-          }
-
-          if (data) {
-            const newSettings = {
-              focusDuration: data.focus_duration,
-              shortBreakDuration: data.short_break_duration,
-              longBreakDuration: data.long_break_duration,
-              rounds: data.rounds,
-            };
-            setSettings(newSettings);
-            setState((prev) => ({
-              ...prev,
-              timeLeft:
-                prev.mode === "focus"
-                  ? data.focus_duration
-                  : prev.mode === "shortBreak"
-                  ? data.short_break_duration
-                  : data.long_break_duration,
-            }));
-          }
-        } catch (error) {
-          console.error("Erro ao carregar configurações:", error);
-        }
-      };
-
-      loadSettings();
-    }
-  }, [user]);
-
-  // Salvar configurações no Supabase
-  useEffect(() => {
-    if (user) {
-      const saveSettings = async () => {
-        try {
-          const { error } = await supabase.from("pomodoro_settings").upsert(
-            {
-              user_id: user.id,
-              focus_duration: settings.focusDuration,
-              short_break_duration: settings.shortBreakDuration,
-              long_break_duration: settings.longBreakDuration,
-              rounds: settings.rounds,
-            },
-            {
-              onConflict: "user_id",
-            }
-          );
-
-          if (error) {
-            console.error("Erro ao salvar configurações:", error);
-            toast.error("Erro ao salvar configurações do Pomodoro");
-          }
-        } catch (error) {
-          console.error("Erro ao salvar configurações:", error);
-          toast.error("Erro ao salvar configurações do Pomodoro");
-        }
-      };
-
-      saveSettings();
-    }
-  }, [user, settings]);
-
-  // Timer logic
-  useEffect(() => {
-    if (state.isRunning) {
-      startTimeRef.current = Date.now();
-      initialTimeRef.current = state.timeLeft;
-
-      timerRef.current = setInterval(() => {
-        const elapsedSeconds = Math.floor(
-          (Date.now() - startTimeRef.current) / 1000
-        );
-        const newTimeLeft = Math.max(
-          0,
-          initialTimeRef.current - elapsedSeconds
-        );
-
-        setState((prev) => {
-          if (newTimeLeft <= 0) {
-            clearInterval(timerRef.current);
-            handleTimerComplete();
-            return prev;
-          }
-          return {
-            ...prev,
-            timeLeft: newTimeLeft,
-          };
-        });
-      }, 1000);
-    }
-
-    return () => {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-      }
-    };
-  }, [state.isRunning]);
-
-  // Atualizar o timer quando a aba voltar a ter foco
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (!document.hidden) {
-        if (state.isRunning) {
-          const elapsedSeconds = Math.floor(
-            (Date.now() - startTimeRef.current) / 1000
-          );
-          const newTimeLeft = Math.max(
-            0,
-            initialTimeRef.current - elapsedSeconds
-          );
-
-          setState((prev) => ({
-            ...prev,
-            timeLeft: newTimeLeft,
-          }));
-        } else {
-          // Se não estiver rodando, mantém o tempo atual
-          setState((prev) => ({
-            ...prev,
-            timeLeft: prev.timeLeft,
-          }));
-        }
-      }
-    };
-
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () => {
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-    };
-  }, [state.isRunning]);
-
-  const startTimer = () => {
-    startTimeRef.current = Date.now();
-    initialTimeRef.current = state.timeLeft;
-    setState((prev) => ({ ...prev, isRunning: true }));
-  };
-
-  const pauseTimer = () => {
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-    }
-    setState((prev) => ({ ...prev, isRunning: false }));
-  };
-
-  const resetTimer = () => {
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-    }
-    setState((prev) => ({
-      ...prev,
-      timeLeft: getTimeForMode(prev.mode),
-      isRunning: false,
-    }));
-  };
-
-  const skipToNext = () => {
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-    }
-
-    setState((prev) => {
-      const isLastRound = prev.rounds + 1 >= settings.rounds;
-      const nextMode =
-        prev.mode === "focus"
-          ? isLastRound
-            ? "longBreak"
-            : "shortBreak"
-          : "focus";
-
-      return {
-        mode: nextMode,
-        timeLeft: getTimeForMode(nextMode),
+        ...state,
+        timeLeft: state.isBreak
+          ? defaultSettings.shortBreakDuration
+          : defaultSettings.focusDuration,
         isRunning: false,
-        rounds:
-          nextMode === "focus"
-            ? (prev.rounds + 1) % settings.rounds
-            : prev.rounds,
+        isPaused: false,
       };
-    });
-  };
+    case "SET_TIME":
+      return {
+        ...state,
+        timeLeft: action.payload,
+        isRunning: false,
+        isPaused: false,
+      };
+    case "TICK":
+      if (state.timeLeft <= 0) {
+        return state;
+      }
+      return { ...state, timeLeft: state.timeLeft - 1 };
+    case "SWITCH_TO_BREAK":
+      return {
+        ...state,
+        isBreak: true,
+        timeLeft: defaultSettings.shortBreakDuration,
+        isRunning: false,
+        isPaused: false,
+      };
+    case "SWITCH_TO_FOCUS":
+      return {
+        ...state,
+        isBreak: false,
+        timeLeft: defaultSettings.focusDuration,
+        isRunning: false,
+        isPaused: false,
+        cycles: state.cycles + 1,
+      };
+    default:
+      return state;
+  }
+}
+
+export function PomodoroProvider({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
+  const [state, dispatch] = useReducer(pomodoroReducer, initialState);
+  const [settings, setSettings] =
+    React.useState<PomodoroSettings>(defaultSettings);
 
   const updateSettings = (newSettings: Partial<PomodoroSettings>) => {
     setSettings((prev) => {
       const updated = { ...prev, ...newSettings };
-      setState((state) => ({
-        ...state,
-        timeLeft: getTimeForMode(state.mode),
-      }));
+
+      // Se o foco duration mudou, atualiza o tempo imediatamente
+      if (newSettings.focusDuration) {
+        dispatch({
+          type: "SET_TIME",
+          payload: newSettings.focusDuration,
+        });
+      }
+
       return updated;
     });
   };
 
-  const handleTimerComplete = () => {
-    const audio = new Audio("/notification.mp3");
-    audio.play();
+  const handleTimerComplete = useCallback(async () => {
+    if (state.isBreak) {
+      try {
+        // Usa a função RPC para criar/obter a matéria padrão
+        const { data: subjectId, error: subjectError } = await supabase.rpc(
+          "create_default_subject"
+        );
 
-    setState((prev) => {
-      const isLastRound = prev.rounds + 1 >= settings.rounds;
-      const nextMode =
-        prev.mode === "focus"
-          ? isLastRound
-            ? "longBreak"
-            : "shortBreak"
-          : "focus";
+        if (subjectError) {
+          console.error("Erro ao obter matéria padrão:", subjectError);
+          throw new Error("Erro ao configurar matéria padrão");
+        }
 
-      toast.success(
-        nextMode === "focus"
-          ? "Hora de focar!"
-          : nextMode === "shortBreak"
-          ? "Hora de uma pausa curta!"
-          : "Hora de uma pausa longa!"
-      );
+        // Salva a sessão de estudo
+        const { error } = await supabase.from("study_sessions").insert({
+          user_id: user?.id,
+          subject_id: subjectId,
+          minutes_studied: settings.focusDuration / 60,
+          completed_at: new Date().toISOString(),
+        });
 
-      return {
-        mode: nextMode,
-        timeLeft: getTimeForMode(nextMode),
-        isRunning: false,
-        rounds:
-          nextMode === "focus"
-            ? (prev.rounds + 1) % settings.rounds
-            : prev.rounds,
-      };
-    });
+        if (error) throw error;
+
+        toast.success("Sessão de estudo concluída!");
+      } catch (error) {
+        console.error("Erro ao salvar sessão:", error);
+        toast.error("Erro ao salvar sessão de estudo");
+      }
+    }
+
+    const isLastCycle = state.cycles + 1 >= settings.longBreakInterval;
+    const nextMode = state.isBreak
+      ? isLastCycle
+        ? "focus"
+        : "break"
+      : "break";
+
+    if (nextMode === "focus") {
+      dispatch({ type: "SWITCH_TO_FOCUS" });
+    } else {
+      dispatch({ type: "SWITCH_TO_BREAK" });
+    }
+  }, [
+    state.isBreak,
+    state.cycles,
+    settings.focusDuration,
+    settings.longBreakInterval,
+    user?.id,
+    supabase,
+    toast,
+    console,
+  ]);
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+
+    if (state.isRunning) {
+      interval = setInterval(() => {
+        dispatch({ type: "TICK" });
+      }, 1000);
+    }
+
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
+  }, [state.isRunning, dispatch]);
+
+  useEffect(() => {
+    if (state.timeLeft === 0 && state.isRunning) {
+      if (settings.notifications) {
+        new Notification(
+          state.isBreak ? "Hora de voltar aos estudos!" : "Hora de descansar!",
+          {
+            body: state.isBreak
+              ? "Seu tempo de descanso acabou. Vamos voltar aos estudos?"
+              : "Parabéns! Você completou um ciclo de foco.",
+            icon: "/favicon.ico",
+          }
+        );
+      }
+
+      const audio = new Audio("/notification.mp3");
+      audio.play().catch(console.error);
+
+      handleTimerComplete();
+    }
+  }, [
+    state.timeLeft,
+    state.isRunning,
+    state.isBreak,
+    settings.notifications,
+    handleTimerComplete,
+    console,
+  ]);
+
+  useEffect(() => {
+    const saveSettings = async () => {
+      if (!user) return;
+
+      try {
+        const { error } = await supabase.from("pomodoro_settings").upsert(
+          {
+            user_id: user.id,
+            focus_duration: settings.focusDuration,
+            short_break_duration: settings.shortBreakDuration,
+            long_break_duration: settings.longBreakDuration,
+            long_break_interval: settings.longBreakInterval,
+            auto_start_breaks: settings.autoStartBreaks,
+            auto_start_pomodoros: settings.autoStartPomodoros,
+            notifications: settings.notifications,
+          },
+          { onConflict: "user_id" }
+        );
+
+        if (error) {
+          console.error("Erro ao salvar configurações:", error);
+        } else {
+          console.log("Configurações salvas com sucesso!");
+        }
+      } catch (error) {
+        console.error("Erro inesperado ao salvar configurações:", error);
+      }
+    };
+
+    const handler = setTimeout(() => {
+      saveSettings();
+    }, 500);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [user, settings]);
+
+  useEffect(() => {
+    const loadUserSettings = async () => {
+      if (!user) {
+        setSettings(defaultSettings);
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from("pomodoro_settings")
+          .select("*")
+          .eq("user_id", user.id)
+          .single();
+
+        if (error && error.code !== "PGRST116") {
+          console.error("Erro ao carregar configurações:", error);
+        } else if (data) {
+          const loadedSettings: PomodoroSettings = {
+            focusDuration: data.focus_duration ?? defaultSettings.focusDuration,
+            shortBreakDuration:
+              data.short_break_duration ?? defaultSettings.shortBreakDuration,
+            longBreakDuration:
+              data.long_break_duration ?? defaultSettings.longBreakDuration,
+            longBreakInterval:
+              data.long_break_interval ?? defaultSettings.longBreakInterval,
+            autoStartBreaks:
+              data.auto_start_breaks ?? defaultSettings.autoStartBreaks,
+            autoStartPomodoros:
+              data.auto_start_pomodoros ?? defaultSettings.autoStartPomodoros,
+            notifications: data.notifications ?? defaultSettings.notifications,
+          };
+          setSettings(loadedSettings);
+          dispatch({
+            type: "SET_TIME",
+            payload: loadedSettings.focusDuration,
+          });
+        } else {
+          setSettings(defaultSettings);
+          dispatch({
+            type: "SET_TIME",
+            payload: defaultSettings.focusDuration,
+          });
+        }
+      } catch (error) {
+        console.error("Erro inesperado ao carregar configurações:", error);
+        setSettings(defaultSettings);
+        dispatch({
+          type: "SET_TIME",
+          payload: defaultSettings.focusDuration,
+        });
+      }
+    };
+
+    loadUserSettings();
+  }, [user, supabase, setSettings, dispatch, console]);
+
+  const startTimer = () => {
+    dispatch({ type: "START_TIMER" });
+  };
+
+  const pauseTimer = () => {
+    dispatch({ type: "PAUSE_TIMER" });
+  };
+
+  const resetTimer = () => {
+    dispatch({ type: "RESET_TIMER" });
+  };
+
+  const setTimerTime = useCallback(
+    (timeInSeconds: number) => {
+      dispatch({ type: "SET_TIME", payload: timeInSeconds });
+    },
+    [dispatch]
+  );
+
+  const resetToShortBreak = useCallback(() => {
+    setTimerTime(settings.shortBreakDuration);
+    dispatch({ type: "SWITCH_TO_BREAK" });
+    pauseTimer();
+  }, [settings.shortBreakDuration, setTimerTime, dispatch, pauseTimer]);
+
+  const pomodoroContextValue: PomodoroContextType = {
+    state,
+    settings,
+    startTimer,
+    pauseTimer,
+    resetTimer,
+    updateSettings,
+    setTimerTime,
+    resetToShortBreak,
   };
 
   return (
-    <PomodoroContext.Provider
-      value={{
-        state,
-        settings,
-        startTimer,
-        pauseTimer,
-        resetTimer,
-        skipToNext,
-        updateSettings,
-        setState,
-      }}
-    >
+    <PomodoroContext.Provider value={pomodoroContextValue}>
       {children}
     </PomodoroContext.Provider>
   );

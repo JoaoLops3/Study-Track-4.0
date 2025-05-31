@@ -1,3 +1,4 @@
+import React, { useEffect } from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -22,18 +23,31 @@ import Calendar from "./pages/Calendar";
 import Tasks from "./pages/Tasks";
 import Pages from "./pages/Pages";
 import Board from "./pages/Board";
+import useStore from "./store";
+import { AppState } from "./types";
 
 // Create a client for React Query
 const queryClient = new QueryClient();
 
 function App() {
+  const loadUserData = useStore((state: AppState) => state.loadUserData);
+
+  useEffect(() => {
+    loadUserData();
+  }, [loadUserData]);
+
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <AuthProvider>
           <PomodoroProvider>
             <SettingsProvider>
-              <Router>
+              <Router
+                future={{
+                  v7_startTransition: true,
+                  v7_relativeSplatPath: true,
+                }}
+              >
                 <Routes>
                   {/* Public routes */}
                   <Route path="/login" element={<Login />} />

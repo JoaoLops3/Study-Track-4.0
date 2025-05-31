@@ -13,6 +13,7 @@ import { Link as RouterLink } from "react-router-dom";
 import GithubLoginButton from "../components/auth/GithubLoginButton";
 import { supabase } from "../lib/supabase";
 import { toast } from "react-hot-toast";
+import { useTheme } from "../contexts/ThemeContext";
 
 interface Stats {
   focusSessions: number;
@@ -36,6 +37,7 @@ export default function Dashboard() {
     githubCommits: 0,
   });
   const [isLoading, setIsLoading] = useState(true);
+  const { theme } = useTheme();
 
   // Update current time every minute
   useEffect(() => {
@@ -199,10 +201,18 @@ export default function Dashboard() {
   return (
     <div className="space-y-6">
       {/* Header with greeting and time */}
-      <header className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
+      <header
+        className={`rounded-xl shadow-sm p-6 ${
+          theme === "dark" ? "bg-gray-800" : "bg-white"
+        }`}
+      >
         <div className="flex flex-col md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold">
+            <h1
+              className={`text-2xl md:text-3xl font-bold ${
+                theme === "dark" ? "text-gray-200" : "text-gray-800"
+              }`}
+            >
               Olá, {user?.user_metadata?.name || "visitante"}
             </h1>
             <p className="text-gray-600 dark:text-gray-400 mt-1">
@@ -212,23 +222,51 @@ export default function Dashboard() {
 
           <div className="mt-4 md:mt-0 flex items-center">
             <Clock className="h-5 w-5 text-indigo-600 dark:text-indigo-400 mr-2" />
-            <span className="text-xl font-medium">{formattedTime}</span>
+            <span
+              className={`text-xl font-medium ${
+                theme === "dark" ? "text-gray-200" : "text-gray-800"
+              }`}
+            >
+              {formattedTime}
+            </span>
           </div>
         </div>
       </header>
 
       {/* Current pomodoro status */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
-        <h2 className="text-lg font-medium mb-4">Status do Pomodoro</h2>
+      <div
+        className={`rounded-xl shadow-sm p-6 ${
+          theme === "dark" ? "bg-gray-800" : "bg-white"
+        }`}
+      >
+        <h2
+          className={`text-lg font-medium mb-4 ${
+            theme === "dark" ? "text-gray-200" : "text-gray-800"
+          }`}
+        >
+          Status do Pomodoro
+        </h2>
 
         <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-          <div className="flex-1 bg-gray-100 dark:bg-gray-700 p-4 rounded-lg">
+          <div
+            className={`flex-1 rounded-lg p-4 ${
+              theme === "dark" ? "bg-gray-700" : "bg-gray-100"
+            }`}
+          >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
+                <p
+                  className={`text-sm ${
+                    theme === "dark" ? "text-gray-400" : "text-gray-500"
+                  }`}
+                >
                   Modo atual
                 </p>
-                <p className="text-xl font-medium mt-1 capitalize">
+                <p
+                  className={`text-xl font-medium mt-1 capitalize ${
+                    theme === "dark" ? "text-gray-50" : "text-gray-800"
+                  }`}
+                >
                   {pomodoroState.mode === "focus"
                     ? "Foco"
                     : pomodoroState.mode === "shortBreak"
@@ -242,7 +280,9 @@ export default function Dashboard() {
                     ? "bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400"
                     : pomodoroState.mode === "shortBreak"
                     ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400"
-                    : "bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400"
+                    : theme === "dark"
+                    ? "bg-blue-900/30 text-blue-400"
+                    : "bg-blue-100 text-blue-600"
                 }`}
               >
                 <Clock size={20} />
@@ -250,33 +290,69 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="flex-1 bg-gray-100 dark:bg-gray-700 p-4 rounded-lg">
+          <div
+            className={`flex-1 rounded-lg p-4 ${
+              theme === "dark" ? "bg-gray-700" : "bg-gray-100"
+            }`}
+          >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
+                <p
+                  className={`text-sm ${
+                    theme === "dark" ? "text-gray-400" : "text-gray-500"
+                  }`}
+                >
                   Rodadas completadas
                 </p>
-                <p className="text-xl font-medium mt-1">
+                <p
+                  className={`text-xl font-medium mt-1 ${
+                    theme === "dark" ? "text-gray-50" : "text-gray-800"
+                  }`}
+                >
                   {pomodoroState.rounds}/{pomodoroState.totalRounds || 0}
                 </p>
               </div>
-              <div className="h-10 w-10 rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+              <div
+                className={`h-10 w-10 rounded-full flex items-center justify-center ${
+                  theme === "dark"
+                    ? "bg-indigo-900/30 text-indigo-400"
+                    : "bg-indigo-100 text-indigo-600"
+                }`}
+              >
                 <BarChart size={20} />
               </div>
             </div>
           </div>
 
-          <div className="flex-1 bg-gray-100 dark:bg-gray-700 p-4 rounded-lg">
+          <div
+            className={`flex-1 rounded-lg p-4 ${
+              theme === "dark" ? "bg-gray-700" : "bg-gray-100"
+            }`}
+          >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
+                <p
+                  className={`text-sm ${
+                    theme === "dark" ? "text-gray-400" : "text-gray-500"
+                  }`}
+                >
                   Total completado
                 </p>
-                <p className="text-xl font-medium mt-1">
+                <p
+                  className={`text-xl font-medium mt-1 ${
+                    theme === "dark" ? "text-gray-50" : "text-gray-800"
+                  }`}
+                >
                   {pomodoroState.totalRounds} sessões
                 </p>
               </div>
-              <div className="h-10 w-10 rounded-full bg-teal-100 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 flex items-center justify-center">
+              <div
+                className={`h-10 w-10 rounded-full flex items-center justify-center ${
+                  theme === "dark"
+                    ? "bg-teal-900/30 text-teal-400"
+                    : "bg-teal-100 text-teal-600"
+                }`}
+              >
                 <CheckCircle size={20} />
               </div>
             </div>
@@ -287,79 +363,189 @@ export default function Dashboard() {
       {/* Statistics grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {/* Focus sessions */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
+        <div
+          className={`rounded-xl shadow-sm p-6 ${
+            theme === "dark" ? "bg-gray-800" : "bg-white"
+          }`}
+        >
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-medium">Sessões de Foco</h3>
-            <div className="p-2 bg-rose-100 dark:bg-rose-900/30 rounded-full text-rose-600 dark:text-rose-400">
+            <h3
+              className={`font-medium ${
+                theme === "dark" ? "text-gray-200" : "text-gray-800"
+              }`}
+            >
+              Sessões de Foco
+            </h3>
+            <div
+              className={`p-2 rounded-full ${
+                theme === "dark"
+                  ? "bg-rose-900/30 text-rose-400"
+                  : "bg-rose-100 text-rose-600"
+              }`}
+            >
               <Clock size={18} />
             </div>
           </div>
-          <p className="text-3xl font-bold">{stats.focusSessions}</p>
-          <p className="text-gray-600 dark:text-gray-400 text-sm mt-1">
+          <p
+            className={`text-3xl font-bold ${
+              theme === "dark" ? "text-gray-50" : "text-gray-800"
+            }`}
+          >
+            {stats.focusSessions}
+          </p>
+          <p
+            className={`text-sm mt-1 ${
+              theme === "dark" ? "text-gray-400" : "text-gray-600"
+            }`}
+          >
             Total: {stats.totalFocusTime} focado
           </p>
         </div>
 
         {/* Tasks */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
+        <div
+          className={`rounded-xl shadow-sm p-6 ${
+            theme === "dark" ? "bg-gray-800" : "bg-white"
+          }`}
+        >
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-medium">Tarefas</h3>
-            <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-full text-emerald-600 dark:text-emerald-400">
+            <h3
+              className={`font-medium ${
+                theme === "dark" ? "text-gray-200" : "text-gray-800"
+              }`}
+            >
+              Tarefas
+            </h3>
+            <div
+              className={`p-2 rounded-full ${
+                theme === "dark"
+                  ? "bg-emerald-900/30 text-emerald-400"
+                  : "bg-emerald-100 text-emerald-600"
+              }`}
+            >
               <CheckCircle size={18} />
             </div>
           </div>
-          <p className="text-3xl font-bold">{stats.completedTasks}</p>
-          <p className="text-gray-600 dark:text-gray-400 text-sm mt-1">
+          <p
+            className={`text-3xl font-bold ${
+              theme === "dark" ? "text-gray-50" : "text-gray-800"
+            }`}
+          >
+            {stats.completedTasks}
+          </p>
+          <p
+            className={`text-sm mt-1 ${
+              theme === "dark" ? "text-gray-400" : "text-gray-600"
+            }`}
+          >
             {stats.upcomingTasks} tarefas pendentes
           </p>
         </div>
 
         {/* GitHub activity */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
+        <div
+          className={`rounded-xl shadow-sm p-6 ${
+            theme === "dark" ? "bg-gray-800" : "bg-white"
+          }`}
+        >
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-medium">Atividade no GitHub</h3>
-            <div className="p-2 bg-gray-100 dark:bg-gray-700 rounded-full text-gray-700 dark:text-gray-300">
+            <h3
+              className={`font-medium ${
+                theme === "dark" ? "text-gray-200" : "text-gray-800"
+              }`}
+            >
+              Atividade no GitHub
+            </h3>
+            <div
+              className={`p-2 rounded-full ${
+                theme === "dark"
+                  ? "bg-gray-700 text-gray-300"
+                  : "bg-gray-100 text-gray-700"
+              }`}
+            >
               <Github size={18} />
             </div>
           </div>
-          <p className="text-3xl font-bold">{stats.githubCommits}</p>
-          <p className="text-gray-600 dark:text-gray-400 text-sm mt-1">
+          <p
+            className={`text-3xl font-bold ${
+              theme === "dark" ? "text-gray-50" : "text-gray-800"
+            }`}
+          >
+            {stats.githubCommits}
+          </p>
+          <p
+            className={`text-sm mt-1 ${
+              theme === "dark" ? "text-gray-400" : "text-gray-600"
+            }`}
+          >
             Commits esta semana
           </p>
-          {!user ? (
-            <div className="mt-4">
-              <GithubLoginButton />
-            </div>
-          ) : (
+          {user ? (
             <RouterLink
               to="/github"
-              className="mt-4 inline-flex items-center justify-center px-4 py-2 bg-gray-900 hover:bg-gray-800 text-white rounded-lg transition-colors duration-200 shadow-sm hover:shadow-md text-sm"
+              className={`mt-4 inline-flex items-center justify-center px-4 py-2 rounded-lg transition-colors duration-200 shadow-sm hover:shadow-md text-sm ${
+                theme === "dark"
+                  ? "bg-gray-700 hover:bg-gray-600 text-gray-200"
+                  : "bg-gray-900 hover:bg-gray-800 text-white"
+              }`}
             >
               <Link className="w-4 h-4 mr-2" />
               Ver Repositórios
             </RouterLink>
+          ) : (
+            <div className="mt-4">
+              <GithubLoginButton />
+            </div>
           )}
         </div>
 
         {/* Weekly progress */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 md:col-span-2">
+        <div
+          className={`rounded-xl shadow-sm p-6 md:col-span-2 ${
+            theme === "dark" ? "bg-gray-800" : "bg-white"
+          }`}
+        >
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-medium">Progresso Semanal</h3>
-            <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-full text-indigo-600 dark:text-indigo-400">
+            <h3
+              className={`font-medium ${
+                theme === "dark" ? "text-gray-200" : "text-gray-800"
+              }`}
+            >
+              Progresso Semanal
+            </h3>
+            <div
+              className={`p-2 rounded-full ${
+                theme === "dark"
+                  ? "bg-indigo-900/30 text-indigo-400"
+                  : "bg-indigo-100 text-indigo-600"
+              }`}
+            >
               <BarChart size={18} />
             </div>
           </div>
 
           <div className="mt-2">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-gray-600 dark:text-gray-400">
+              <span
+                className={`text-sm ${
+                  theme === "dark" ? "text-gray-400" : "text-gray-600"
+                }`}
+              >
                 Progresso
               </span>
-              <span className="text-sm font-medium">
+              <span
+                className={`text-sm font-medium ${
+                  theme === "dark" ? "text-gray-200" : "text-gray-800"
+                }`}
+              >
                 {stats.weeklyProgress}%
               </span>
             </div>
-            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
+            <div
+              className={`w-full rounded-full h-2.5 ${
+                theme === "dark" ? "bg-gray-700" : "bg-gray-200"
+              }`}
+            >
               <div
                 className="bg-indigo-600 h-2.5 rounded-full"
                 style={{ width: `${stats.weeklyProgress}%` }}

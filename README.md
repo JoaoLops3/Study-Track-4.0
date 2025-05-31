@@ -1,65 +1,83 @@
-# Study Track 4.0
+# Study Track 🌱
 
-Uma aplicação web moderna para gerenciamento de estudos, combinando técnicas de produtividade como Pomodoro, gerenciamento de tarefas e integração com ferramentas populares.
+## Sobre o Projeto
 
-## 🚀 Funcionalidades
+O Study Track é uma aplicação moderna e intuitiva desenvolvida para auxiliar estudantes e profissionais na organização e otimização de seus estudos. Combinando técnicas de produtividade com gamificação, o aplicativo oferece uma experiência única de aprendizado e desenvolvimento pessoal.
 
-- ⏱️ **Pomodoro Timer**
+## 🚀 Funcionalidades Principais
 
-  - Timer personalizável
-  - Modos: Foco, Pausa Curta, Pausa Longa
-  - Timer flutuante
-  - Estatísticas de sessões
+### 📅 Calendário Inteligente
 
-- ✅ **Gerenciamento de Tarefas**
+- Integração com Google Calendar
+- Visualização de eventos e compromissos
+- Gerenciamento de horários de estudo
+- Interface intuitiva e responsiva
 
-  - CRUD completo de tarefas
-  - Categorização
-  - Prioridades
-  - Datas de entrega
+### 🌳 Sistema de Foco (Forest)
 
-- 📊 **Dashboard**
+- Timer configurável para períodos de estudo
+- Plantio de árvores virtuais durante o foco
+- Sistema de recompensas e conquistas
+- Floresta virtual personalizada
+- Insígnias por conquistas
+- Progresso semanal
 
-  - Visão geral do progresso
-  - Estatísticas de estudo
-  - Integração com GitHub
-  - Calendário de atividades
+### 📊 Métricas e Progresso
 
-- 🔄 **Integrações**
-  - GitHub (commits e repositórios)
-  - Google Calendar
-  - Sistema de notificações
+- Acompanhamento de tempo de estudo
+- Estatísticas detalhadas de produtividade
+- Visualização de progresso em gráficos
+- Histórico de sessões
+- Sistema de conquistas
+- Progresso semanal detalhado
 
-## 🛠️ Tecnologias
+## 🛠️ Tecnologias Utilizadas
 
 - **Frontend**
 
-  - React 18
+  - React
   - TypeScript
-  - Vite
   - Tailwind CSS
-  - Zustand (Gerenciamento de Estado)
-  - React Query
+  - Lucide Icons
+  - ESLint
+  - Prettier
 
 - **Backend**
+
   - Supabase
     - PostgreSQL
-    - Autenticação
-    - Storage
-    - Row Level Security
+  - Google Calendar API
 
-## 🚀 Como Executar
+- **Autenticação**
+
+  - Supabase Auth
+  - Google OAuth
+
+- **Gerenciamento de Estado**
+  - Context API
+  - Custom Hooks
+
+## 🚀 Como Começar
+
+### Pré-requisitos
+
+- Node.js (versão 18 ou superior)
+- npm ou yarn
+- Conta no Supabase
+- Credenciais do Google Cloud Platform
+
+### Instalação
 
 1. Clone o repositório
 
 ```bash
-git clone https://github.com/seu-usuario/study-track-4.0.git
-cd study-track-4.0
+git clone https://github.com/seu-usuario/study-track.git
 ```
 
 2. Instale as dependências
 
 ```bash
+cd study-track
 npm install
 ```
 
@@ -69,51 +87,60 @@ npm install
 cp .env.example .env
 ```
 
-Edite o arquivo `.env` com suas credenciais do Supabase
-
-4. Execute o projeto
+4. Inicie o projeto
 
 ```bash
 npm run dev
 ```
 
-## 📦 Estrutura do Projeto
+## 🔧 Configuração do Ambiente
 
-```
-src/
-├── components/     # Componentes reutilizáveis
-├── contexts/      # Contextos React
-├── pages/         # Páginas da aplicação
-├── lib/           # Configurações e utilitários
-└── assets/        # Recursos estáticos
-```
+1. Crie um projeto no Supabase e configure as variáveis de ambiente:
 
-## 🔒 Autenticação
+   - `VITE_SUPABASE_URL`
+   - `VITE_SUPABASE_ANON_KEY`
 
-- Login com email/senha
-- Autenticação social (Google, GitHub)
-- Recuperação de senha
-- Proteção de rotas
+2. Configure o Google Cloud Platform:
+   - Crie um projeto
+   - Ative a Google Calendar API
+   - Configure as credenciais OAuth
+   - Adicione as variáveis de ambiente:
+     - `VITE_GOOGLE_CLIENT_ID`
+     - `VITE_GOOGLE_CLIENT_SECRET`
 
-## 🎨 Interface
+## 📱 Recursos em Desenvolvimento
 
-- Design moderno e intuitivo
-- Tema claro/escuro
-- Totalmente responsivo
-- Componentes reutilizáveis
-
-## 📝 Licença
-
-Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para mais detalhes.
+- [ ] Sistema de gamificação avançado
+- [ ] Integração com mais plataformas de calendário
+- [ ] Modo offline
+- [ ] Aplicativo mobile nativo
+- [ ] Análise de padrões de estudo com IA
+- [ ] Mais tipos de conquistas e insígnias
+- [ ] Sistema de níveis e experiência
 
 ## 🤝 Contribuindo
 
-1. Faça um fork do projeto
-2. Crie uma branch para sua feature (`git checkout -b feature/AmazingFeature`)
+1. Faça um Fork do projeto
+2. Crie uma Branch para sua Feature (`git checkout -b feature/AmazingFeature`)
 3. Commit suas mudanças (`git commit -m 'Add some AmazingFeature'`)
-4. Push para a branch (`git push origin feature/AmazingFeature`)
+4. Push para a Branch (`git push origin feature/AmazingFeature`)
 5. Abra um Pull Request
+
+## 📄 Licença
+
+Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para mais detalhes.
+
+## ✨ Agradecimentos
+
+- [Forest App](https://www.forestapp.cc/) pela inspiração no sistema de foco
+- [Supabase](https://supabase.io/) pelo backend robusto
+- [Tailwind CSS](https://tailwindcss.com/) pelo framework de estilização
+- [Lucide Icons](https://lucide.dev/) pelos ícones
 
 ## 📞 Suporte
 
 Para suporte, envie um email para seu-email@exemplo.com ou abra uma issue no GitHub.
+
+---
+
+Desenvolvido com ❤️ por [Seu Nome]

@@ -1,5 +1,6 @@
 import { TrashIcon } from "@heroicons/react/24/outline";
 import { AlertCircle } from "lucide-react";
+import { getDueDateStatus } from "../utils/dateUtils";
 
 interface Task {
   id: string;
@@ -16,44 +17,6 @@ interface TaskItemProps {
   onDelete: (id: string) => void;
 }
 
-const formatDueDate = (dueDate: string) => {
-  if (!dueDate) return null;
-
-  const today = new Date();
-  const due = new Date(dueDate);
-  const isOverdue = due < today;
-
-  // Verificar se está pendente (menos de 24 horas para vencer)
-  const hoursUntilDue = (due.getTime() - today.getTime()) / (1000 * 60 * 60);
-  const isPending = !isOverdue && hoursUntilDue <= 24;
-
-  // Formatar a data no padrão brasileiro
-  const formattedDate = due.toLocaleDateString("pt-BR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
-
-  // Definir a cor baseada no status
-  let textColor = "text-gray-500"; // padrão
-  if (isOverdue) {
-    textColor = "text-red-500";
-  } else if (isPending) {
-    textColor = "text-orange-500";
-  }
-
-  return (
-    <span className={`text-sm ${textColor}`}>
-      {isOverdue
-        ? "Vencido em: "
-        : isPending
-        ? "Pendente, vence em: "
-        : "Vence em: "}
-      {formattedDate}
-    </span>
-  );
-};
-
 const getPriorityColor = (priority: string) => {
   switch (priority) {
     case "Alta":
@@ -68,6 +31,13 @@ const getPriorityColor = (priority: string) => {
 };
 
 export function TaskItem({ task, onComplete, onDelete }: TaskItemProps) {
+  const dueDateStatus = task.due_date ? getDueDateStatus(task.due_date) : null;
+
+  console.log(
+    `Tarefa: ${task.title}, Status Vencimento:`,
+    dueDateStatus?.formattedDate
+  );
+
   return (
     <div className="flex items-start justify-between">
       <div className="flex items-start space-x-4">
@@ -87,7 +57,11 @@ export function TaskItem({ task, onComplete, onDelete }: TaskItemProps) {
             >
               {task.priority}
             </span>
-            {task.due_date && formatDueDate(task.due_date)}
+            {dueDateStatus && (
+              <span className={`text-sm ${dueDateStatus.color}`}>
+                {dueDateStatus.text} {dueDateStatus.formattedDate}
+              </span>
+            )}
           </div>
         </div>
       </div>
@@ -96,7 +70,7 @@ export function TaskItem({ task, onComplete, onDelete }: TaskItemProps) {
           onClick={() => onComplete(task.id)}
           className="text-sm font-medium text-green-500 hover:text-green-700"
         >
-          Concluir
+          {task.completed ? "Desfazer" : "Concluir"}
         </button>
         <button
           onClick={() => onDelete(task.id)}
