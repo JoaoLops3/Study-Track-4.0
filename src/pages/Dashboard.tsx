@@ -1,19 +1,19 @@
-import { useState, useEffect } from "react";
 import {
-  Clock,
   BarChart,
   Calendar as CalendarIcon,
   CheckCircle,
+  Clock,
   Github,
   Link,
 } from "lucide-react";
-import { useAuth } from "../contexts/AuthContext";
-import { usePomodoro } from "../contexts/PomodoroContext";
+import { useEffect, useState } from "react";
+import { toast } from "react-hot-toast";
 import { Link as RouterLink } from "react-router-dom";
 import GithubLoginButton from "../components/auth/GithubLoginButton";
-import { supabase } from "../lib/supabase";
-import { toast } from "react-hot-toast";
+import { useAuth } from "../contexts/AuthContext";
+import { usePomodoro } from "../contexts/PomodoroContext";
 import { useTheme } from "../contexts/ThemeContext";
+import { supabase } from "../lib/supabase";
 
 interface Stats {
   focusSessions: number;
@@ -98,10 +98,9 @@ export default function Dashboard() {
       // Buscar commits do GitHub
       try {
         const { data: integration, error: integrationError } = await supabase
-          .from("user_integrations")
+          .from("github_integrations")
           .select("access_token")
           .eq("user_id", user?.id)
-          .eq("provider", "github")
           .single();
 
         if (!integrationError && integration?.access_token) {

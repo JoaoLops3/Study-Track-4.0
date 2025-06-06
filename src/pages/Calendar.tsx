@@ -142,11 +142,17 @@ export default function Calendar() {
             calendarList.items as GoogleCalendarListEntry[]
           );
 
-          for (const calendar of calendarList.items as GoogleCalendarListEntry[]) {
+          // Buscar eventos apenas do calendário principal
+          const mainCalendarId = googleIntegration.calendar_id;
+          const mainCalendar = (
+            calendarList.items as GoogleCalendarListEntry[]
+          ).find((calendar) => calendar.id === mainCalendarId);
+
+          if (mainCalendar) {
             try {
               const response = await fetch(
                 `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(
-                  calendar.id as string
+                  mainCalendar.id
                 )}/events?${new URLSearchParams({
                   timeMin: startOfMonth.toISOString(),
                   timeMax: endOfMonth.toISOString(),
@@ -202,7 +208,7 @@ export default function Calendar() {
 
                     const newResponse = await fetch(
                       `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(
-                        calendar.id as string
+                        mainCalendar.id
                       )}/events?${new URLSearchParams({
                         timeMin: startOfMonth.toISOString(),
                         timeMax: endOfMonth.toISOString(),
@@ -231,7 +237,7 @@ export default function Calendar() {
                             end_date: endDate.toISOString(),
                             color: event.colorId
                               ? `#${event.colorId}`
-                              : calendar.backgroundColor || "#3b82f6",
+                              : mainCalendar.backgroundColor || "#3b82f6",
                             user_id: user.id,
                             source: "google" as const,
                           };
@@ -261,9 +267,15 @@ export default function Calendar() {
                     );
                   }
                 } else {
+                  console.error(
+                    `Erro ao buscar eventos do calendário ${
+                      mainCalendar.summary || "desconhecido"
+                    }:`,
+                    error
+                  );
                   toast.error(
                     `Erro ao carregar eventos do calendário ${
-                      calendar.summary || "desconhecido"
+                      mainCalendar.summary || "desconhecido"
                     }.`
                   );
                 }
@@ -288,7 +300,7 @@ export default function Calendar() {
                     end_date: endDate.toISOString(),
                     color: event.colorId
                       ? `#${event.colorId}`
-                      : calendar.backgroundColor || "#3b82f6",
+                      : mainCalendar.backgroundColor || "#3b82f6",
                     user_id: user.id,
                     source: "google" as const,
                   };
@@ -298,13 +310,13 @@ export default function Calendar() {
             } catch (error: unknown) {
               console.error(
                 `Erro ao buscar eventos do calendário ${
-                  calendar.summary || "desconhecido"
+                  mainCalendar.summary || "desconhecido"
                 }:`,
                 error
               );
               toast.error(
                 `Erro ao carregar eventos do calendário ${
-                  calendar.summary || "desconhecido"
+                  mainCalendar.summary || "desconhecido"
                 }.`
               );
             }
@@ -316,14 +328,19 @@ export default function Calendar() {
       }
 
       // Combinar e desduplicar eventos
-      const allEvents = [...processedLocalEvents, googleEvents.flat()].flat(); // Usar flat() para garantir que googleEvents seja um array plano
+      const allEvents = [
+        ...processedLocalEvents,
+        ...googleEvents.flat(),
+      ].flat();
       const uniqueEvents = allEvents.reduce((acc: Event[], current: Event) => {
-        const x = acc.find(
+        const exists = acc.some(
           (item: Event) =>
-            item.source === current.source && item.id === current.id
+            item.title === current.title &&
+            item.start_date === current.start_date &&
+            item.end_date === current.end_date
         );
-        if (!x) {
-          return acc.concat([current]);
+        if (!exists) {
+          acc.push(current);
         }
         return acc;
       }, [] as Event[]);
@@ -600,11 +617,10 @@ export default function Calendar() {
                   date && date.getMonth() === currentDate.getMonth()
                     ? "text-gray-900 dark:text-gray-100"
                     : "text-gray-400 dark:text-gray-600"
-                } ${
+                } $
                   date && isToday(date)
                     ? "bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-500 dark:border-blue-400"
-                    : ""
-                } ${date ? "border border-gray-200 dark:border-gray-700" : ""}
+                    : ""$date ? "border border-gray-200 dark:border-gray-700" : ""
                 `}
               >
                 {date && (
@@ -621,12 +637,11 @@ export default function Calendar() {
                                 setIsModalOpen(true);
                               }
                             }}
-                            className={`text-xs p-1 rounded cursor-pointer truncate hover:opacity-80 transition-opacity ${
+                            className={`text-xs p-1 rounded cursor-pointer truncate hover:opacity-80 transition-opacity $
                               event.source === "google"
                                 ? "cursor-default"
-                                : "cursor-pointer"
-                            }`}
-                            style={{ backgroundColor: `${event.color}20` }}
+                                : "cursor-pointer"`}
+                            style={{ backgroundColor: `$event.color20` }}
                             title={event.title}
                             disabled={event.source === "google"}
                           >
@@ -646,7 +661,7 @@ export default function Calendar() {
                                 }
                               }}
                               className="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity p-1 text-gray-500 hover:text-red-500"
-                              aria-label={`Deletar evento ${event.title}`}
+                              aria-label={`Deletar evento $event.title`}
                             >
                               <Trash2 size={14} />
                             </button>

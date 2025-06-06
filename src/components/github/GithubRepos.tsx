@@ -1,7 +1,7 @@
+import { Eye, GitFork, Github, Star } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 import { supabase } from "../../lib/supabase";
-import { Github, Star, GitFork, Eye } from "lucide-react";
 import GithubLoginButton from "../auth/GithubLoginButton";
 
 interface Repo {
@@ -26,10 +26,9 @@ export default function GithubRepos() {
     async function fetchRepos() {
       try {
         const { data: integration, error: integrationError } = await supabase
-          .from("user_integrations")
+          .from("github_integrations")
           .select("access_token")
           .eq("user_id", user?.id)
-          .eq("provider", "github")
           .single();
 
         if (integrationError) throw integrationError;

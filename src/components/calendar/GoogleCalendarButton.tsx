@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
 import { Calendar } from "lucide-react";
-import { supabase } from "../../lib/supabase";
+import { useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
+import { supabase } from "../../lib/supabase";
 
 export default function GoogleCalendarButton() {
   const [isConnected, setIsConnected] = useState(false);
@@ -32,18 +32,12 @@ export default function GoogleCalendarButton() {
 
         const { data, error } = await supabase
           .from("google_calendar_integrations")
-          .select("*")
+          .select("id, user_id, calendar_id")
           .eq("user_id", session.user.id)
-          .single();
+          .maybeSingle();
 
         if (error) {
-          if (error.code === "PGRST116") {
-            console.log("Nenhuma integração encontrada");
-            setIsConnected(false);
-            setIntegrationId(null);
-          } else {
-            console.error("Erro ao verificar integração:", error);
-          }
+          console.error("Erro ao verificar integração:", error);
           return;
         }
 

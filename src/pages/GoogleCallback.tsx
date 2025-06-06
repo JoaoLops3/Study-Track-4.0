@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
+import { toast } from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
-import { toast } from "react-hot-toast";
 
 export default function GoogleCallback() {
   const [isLoading, setIsLoading] = useState(true);
@@ -119,31 +119,21 @@ export default function GoogleCallback() {
         user_id: user.id,
         access_token: tokens.access_token,
         refresh_token: tokens.refresh_token,
-        token_expiry: tokenExpiry.toISOString(),
+        token_expires_at: tokenExpiry.toISOString(),
         calendar_id: calendarInfo.id,
         calendar_summary: calendarInfo.summary,
         calendar_timezone: calendarInfo.timeZone,
       };
 
-      if (existingIntegration) {
-        const { error: updateError } = await supabase
-          .from("google_calendar_integrations")
-          .update(integrationData)
-          .eq("id", existingIntegration.id);
+      const { error: upsertError } = await supabase
+        .from("google_calendar_integrations")
+        .upsert(integrationData, {
+          onConflict: "user_id",
+        });
 
-        if (updateError) {
-          console.error("Erro ao atualizar integração:", updateError);
-          throw updateError;
-        }
-      } else {
-        const { error: insertError } = await supabase
-          .from("google_calendar_integrations")
-          .insert([integrationData]);
-
-        if (insertError) {
-          console.error("Erro ao inserir integração:", insertError);
-          throw insertError;
-        }
+      if (upsertError) {
+        console.error("Erro ao salvar integração:", upsertError);
+        throw upsertError;
       }
 
       console.log("Integração salva com sucesso");
