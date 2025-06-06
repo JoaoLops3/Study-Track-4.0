@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect } from "react";
 import { Calculator, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 
 const SCIENTIFIC_BUTTONS = [
   ["sin", "cos", "tan", "π"],
@@ -18,7 +18,7 @@ const SCIENTIFIC_CONSTS = {
 
 function evalScientific(expr: string): string {
   try {
-    let replaced = expr
+    const replaced = expr
       .replace(/π/g, `${Math.PI}`)
       .replace(/e/g, `${Math.E}`)
       .replace(/√([\d.]+)/g, (_, n) => `Math.sqrt(${n})`)
@@ -30,7 +30,7 @@ function evalScientific(expr: string): string {
       .replace(/ln\(([^)]+)\)/g, (_, n) => `Math.log(${n})`)
       .replace(/%/g, "/100");
     // eslint-disable-next-line no-eval
-    let result = eval(replaced);
+    const result = eval(replaced);
     if (typeof result === "number" && !isNaN(result) && isFinite(result)) {
       return result.toString();
     }
@@ -135,6 +135,7 @@ export function FloatingCalculator() {
   if (!isOpen) {
     return (
       <button
+        type="button"
         onClick={() => setIsOpen(true)}
         className="fixed bottom-4 right-4 p-3 bg-teal-600 hover:bg-teal-700 text-white rounded-full shadow-lg transition-colors"
         aria-label="Expand Calculator"
@@ -163,6 +164,7 @@ export function FloatingCalculator() {
           Calculadora Científica
         </h3>
         <button
+          type="button"
           onClick={() => setIsOpen(false)}
           className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
         >
@@ -182,6 +184,7 @@ export function FloatingCalculator() {
       <div className="grid grid-cols-4 gap-2 mb-2">
         <button
           onClick={() => handleButton("C")}
+          type="button"
           className="col-span-4 p-2 rounded-lg bg-red-500 hover:bg-red-600 text-white font-medium transition-colors mb-2"
         >
           Limpar
@@ -189,6 +192,7 @@ export function FloatingCalculator() {
         {SCIENTIFIC_BUTTONS.flat().map((btn) => (
           <button
             key={btn}
+            type="button"
             onClick={() => handleButton(btn)}
             className={`p-2 rounded-lg text-lg font-medium transition-colors
               ${

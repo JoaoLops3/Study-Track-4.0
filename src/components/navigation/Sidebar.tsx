@@ -1,24 +1,25 @@
+import {
+  Calendar,
+  CheckSquare,
+  Clock,
+  FileText,
+  Github,
+  Home,
+  LayoutGrid,
+  Menu,
+  Moon,
+  Settings,
+  Sun,
+  Timer,
+  X,
+} from "lucide-react";
 import { useState } from "react";
 import { NavLink } from "react-router-dom";
-import {
-  Home,
-  Calendar,
-  Settings,
-  Timer,
-  Clock,
-  Github,
-  CheckSquare,
-  Moon,
-  Sun,
-  Menu,
-  X,
-  FileText,
-  LayoutGrid,
-} from "lucide-react";
-import { useAuth } from "../../contexts/AuthContext";
-import { useTheme } from "../../contexts/ThemeContext";
-import { useSettings } from "../../contexts/SettingsContext";
 import logo from "../../assets/logo-v1.png";
+import { useAuth } from "../../contexts/AuthContext";
+import { useSettings } from "../../contexts/SettingsContext";
+import { useTheme } from "../../contexts/ThemeContext";
+import Avatar from "../common/Avatar";
 
 export default function Sidebar() {
   const { user, signOut } = useAuth();
@@ -187,13 +188,14 @@ export default function Sidebar() {
             {/* User profile */}
             {user && (
               <div className="flex items-center gap-3">
-                <img
-                  src={
-                    user.user_metadata?.avatar_url ||
-                    "https://via.placeholder.com/32"
+                <Avatar
+                  src={user.user_metadata?.avatar_url}
+                  alt={
+                    user.user_metadata?.full_name ||
+                    user.user_metadata?.name ||
+                    "User"
                   }
-                  alt="Profile"
-                  className="h-8 w-8 rounded-full"
+                  size="sm"
                 />
                 {!settings.compactSidebar && (
                   <div className="overflow-hidden">

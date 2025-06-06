@@ -108,16 +108,6 @@ npm run dev
      - `VITE_GOOGLE_CLIENT_ID`
      - `VITE_GOOGLE_CLIENT_SECRET`
 
-## 📱 Recursos em Desenvolvimento
-
-- [ ] Sistema de gamificação avançado
-- [ ] Integração com mais plataformas de calendário
-- [ ] Modo offline
-- [ ] Aplicativo mobile nativo
-- [ ] Análise de padrões de estudo com IA
-- [ ] Mais tipos de conquistas e insígnias
-- [ ] Sistema de níveis e experiência
-
 ## 🤝 Contribuindo
 
 1. Faça um Fork do projeto

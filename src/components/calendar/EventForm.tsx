@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
+import { toast } from "react-hot-toast";
 import { useAuth } from "../../contexts/AuthContext";
 import { supabase } from "../../lib/supabase";
-import { toast } from "react-hot-toast";
 
 interface Event {
   id: string;
@@ -14,9 +14,11 @@ interface Event {
 }
 
 interface EventFormProps {
-  event?: Event | null;
+  event: Event | null;
   onClose: () => void;
-  onSave: () => void;
+  onSave: (
+    eventData: Omit<Event, "id" | "user_id" | "source"> & { id?: string }
+  ) => Promise<void>;
 }
 
 const COLORS = [
@@ -99,10 +101,12 @@ export default function EventForm({ event, onClose, onSave }: EventFormProps) {
         toast.success("Evento criado com sucesso!");
       }
 
-      onSave();
-    } catch (error: any) {
+      onSave(eventData);
+    } catch (error: unknown) {
       console.error("Erro ao salvar evento:", error);
-      toast.error(error.message || "Erro ao salvar evento");
+      toast.error(
+        error instanceof Error ? error.message : "Erro ao salvar evento"
+      );
     } finally {
       setIsSubmitting(false);
     }
